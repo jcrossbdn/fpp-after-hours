@@ -1,0 +1,55 @@
+# FPP After Hours (Internet Radio Manager)
+
+This plugin allows you to configure internet radio streams for playback after show hours
+
+### Known limitations / Gotchas
+  - There is a known bug with fpp 2.5 that prevents scripts from running from playlists. You must switch to the master branch to use scripts (see https://falconchristmas.com/forum/index.php?topic=10032.0 for details)
+  
+### Getting Started
+1. Install the plugin
+   - from the command line type: sudo git clone git://github.com/jcrossbdn/fpp-after-hours /home/fpp/media/plugins/fpp-after-hours
+2. Navigate to the "Content Setup" menu in the Falcon Player User Interface and then the "After Hours Music" option. If you dont see this option then refresh your browser window.
+3. You will likely be presented with a screen saying you must install dependencies.  Click install and wait for the confirmation screen.
+4. You will then be presented with the After Hours plugin home page.
+
+![home page](https://raw.github.com/jcrossbdn/fpp-after-hours/master/pluginHomePage.jpg)
+
+### Navigation
+The plugin page is separated into a few sections:
+- Now playing shows the current stream information including volume and title if provided by the radio station
+- Control allows you to test the scripts (this runs the same scripts that are saved in the fpp scripts directory) and adjust the volume in real time (if a stream is running the original show volume will be displayed)
+- Stream configuration allows you to save streams and make them available to be run, set priority and volume as well as see if the server responds to pings.
+
+### Adding a new Stream
+1. At the bottom of the page there are two textboxes.  Enter the name or description you want in the Name field and add the URL of the stream in the URL field (see below for how to find the URL)
+2. Click Save
+
+### Testing a stream
+1. To test a stream you must make it Active by checking off the Active checkbox beside the desired stream
+2. Then you can either set the priority to a lower number than all the other active streams or make all other streams Inactive by unchecking their Active checkboxes
+3. Hit Save if you have made any changes above (this page does not auto-save)
+4. Ensure that the status column shows "Reachable" for the stream.  If the fpp cannot communicate with a radio station it will show "Unreachable".
+5. Click "Run Start Script" and the stream should start playing throught the fpp.
+6. Use the "Volume +" or "Volume -" links to adjust the current volume to the desired level. Once you have the volume you want you can enter it into the volume textbox for that stream (without the % sign). Hit save once you have done this. If the volume is fine you can enter a hyphen "-" into the volume textbox.
+7. Click "Run Stop Script" to stop the stream.  The volume will be automatically reverted to the "show volume" (the volume that the fpp was at before running the Start Script).
+
+### Radio Station selection order and priority
+1. The Start Script will first look at all saved radio stations you have
+2. It will then determine which ones are in an active state
+3. It will then order them by priority (lowest to highest)
+4. It will then ping the server to see if it is online
+5. When it finds an online station it will start the stream
+6. The current volume will be saved as "Show Volume" and the fpp volume will be adjusted if you have a value in the volume column for that station.
+
+
+### Finding the URL of your favorite radio station
+There are several internet radio streams available and you just have to find something that can be played by the "mpc" player.  I have found that some .m3u links don't work but most .pls streams seem to (I have not explored why).
+
+https://www.internet-radio.com/stations/christmas/# is one site where you can find many stations.  Navigate to this website, find the station you would like and click on the ".pls" link.  Save the file or open with notepad or another text editor.
+
+Here is a sample .pls file
+[playlist]
+NumberOfEntries=1
+File1=http://192.111.140.11:8576/listen.pls?sid=1
+
+copy the http://192.111.140.11:8567 (ignore the ending slash and text) and that is your stream URL that you can paste into the after hours plugin page.
