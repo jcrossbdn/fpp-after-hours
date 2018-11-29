@@ -15,7 +15,7 @@ if (count($fah_config['streams'])) {
   if (count($streamPick)) {
     ksort($streamPick);
     foreach ($streamPick as $pickme) {
-      $rnd=rand(1,count($pickme))-1;
+      $rnd=rand(0,count($pickme))-1;
       exec("mpc volume",$volRet);
       $vol=str_replace('volume: ',"",$volRet[0]);
       $vol=str_replace('%',"",$vol);
