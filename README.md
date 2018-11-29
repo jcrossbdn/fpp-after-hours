@@ -3,7 +3,7 @@
 This plugin allows you to configure internet radio streams for playback after show hours
 
 ### Known limitations / Gotchas
-  - There is a known bug with fpp 2.5 that prevents scripts from running from playlists. You must switch to the master branch to use scripts (see https://falconchristmas.com/forum/index.php?topic=10032.0 for details)
+  - There is a known bug with fpp 2.5 that prevents scripts from running from playlists. You must switch to the master branch to use scripts (see https://falconchristmas.com/forum/index.php?topic=10032.0 for details) ***This is fixed in v2.6
   
 ### Getting Started
 1. Install the plugin
