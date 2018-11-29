@@ -53,3 +53,16 @@ NumberOfEntries=1
 File1=http://192.111.140.11:8576/listen.pls?sid=1
 
 copy the http://192.111.140.11:8567 (ignore the ending slash and text) and that is your stream URL that you can paste into the after hours plugin page.
+
+### Using this plugin in conjunction with your show playlist
+1. Once the plugin is configured you will see two scripts presented in the fpp File Manager in the Scripts tab, one called fpp-after-hours-start.php and the other called fpp-after-hours-stop.php.
+
+##### Start and stop after hours using fpp playlist and schedule settings
+1. To start and stop the after hours radio station go to the desired playlist (Content Setup / Playlists / click the desired playlist).
+2. You can then add a new playlist entry, choose type: Script
+3. Choose the Script named fpp-after-hours-start.php and click add
+4. Choose the Script named fpp-after-hours-stop.php and click add
+5. Drag and drop the fpp-after-hours-stop.php script right under the grey "Lead In" row
+6. Drag and drop the fpp-after-hours-start.php script right under the grey "Lead Out" row
+7. Click Save
+8. The after hours radio station will now start when your show ends and stop when your show is about to start (show volume is saved when fpp-after-hours-start.php is run and restored when fpp-after-hours-stop.php is run)
