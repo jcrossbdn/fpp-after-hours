@@ -36,10 +36,11 @@ The plugin page is separated into a few sections:
 ### Radio Station selection order and priority
 1. The Start Script will first look at all saved radio stations you have
 2. It will then determine which ones are in an active state
-3. It will then order them by priority (lowest to highest)
-4. It will then ping the server to see if it is online
-5. When it finds an online station it will start the stream
-6. The current volume will be saved as "Show Volume" and the fpp volume will be adjusted if you have a value in the volume column for that station.
+3. It will then ping the server to see if it is online
+4. It will then order the streams by priority (lowest to highest)
+5. If multiple streams have the same priority then one will be randomly selected
+6. The selected stream will be started
+7. The current volume will be saved as "Show Volume" and the fpp volume will be adjusted if you have a value in the volume column for that station.
 
 ### How does volume work
 When the Run Start Script button or fpp-after-hours-start.php script is executed the script will capture the current volume of the pi and save it to a file.  
