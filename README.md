@@ -47,9 +47,9 @@ There are several internet radio streams available and you just have to find som
 
 https://www.internet-radio.com/stations/christmas/# is one site where you can find many stations.  Navigate to this website, find the station you would like and click on the ".pls" link.  Save the file or open with notepad or another text editor.
 
-Here is a sample .pls file
-[playlist]
-NumberOfEntries=1
+Here is a sample .pls file  
+[playlist]  
+NumberOfEntries=1  
 File1=http://192.111.140.11:8576/listen.pls?sid=1
 
 copy the http://192.111.140.11:8567 (ignore the ending slash and text) and that is your stream URL that you can paste into the after hours plugin page.
