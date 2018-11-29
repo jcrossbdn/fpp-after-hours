@@ -89,7 +89,7 @@ else {
 
 //get saved show volume
 exec('mpc current',$song);
-if (isset($song[0]) && file_exists($settings['mediaDirectory'].'/plugindata/fpp-after-hours-showVolume')) $showVolume='Volume will be reset to '.file_get_contents($settings['mediaDirectory'].'/plugindata/fpp-after-hours-showVolume').' (Show Level) when Stop Script is executed';
+if (isset($song[0]) && file_exists($settings['mediaDirectory'].'/plugindata/fpp-after-hours-showVolume'))  $showVolume='Volume will be reset to '.file_get_contents($settings['mediaDirectory'].'/plugindata/fpp-after-hours-showVolume').' (Show Level) when Stop Script is executed';
 else $showVolume='';
 if ($dependencies == '') {
   echo "
@@ -128,7 +128,7 @@ if ($dependencies == '') {
   <div id=\"elements\" class=\"settings\">
     <fieldset>
       <legend>Control</legend>
-      <div align=\"center\"><table border=0><tr><td><a href='?plugin=fpp-after-hours&page=runScriptStart.php&nopage=1'>Run Start Script</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a href='?plugin=fpp-after-hours&page=runScriptStop.php&nopage=1'>Run Stop Script</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a href='?plugin=fpp-after-hours&page=volume.php&nopage=1&vup'>Volume +</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a href='?plugin=fpp-after-hours&page=volume.php&vdn&nopage=1'>Volume -</a></td></tr></table>
+      <div align=\"center\"><table border=0><tr><td><a href='?plugin=fpp-after-hours&page=runScriptStart.php&nopage=1'>Run Start Script</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a href='?plugin=fpp-after-hours&page=runScriptStop.php&nopage=1'>Run Stop Script</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td>".($showVolume!='' ? "<a href='?plugin=fpp-after-hours&page=volume.php&nopage=1&vup'>Volume +</a>" : "Volume +")."</td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td>".($showVolume!='' ? "<a href='?plugin=fpp-after-hours&page=volume.php&vdn&nopage=1'>Volume -</a>" : "Volume -")."</td></tr></table>
   ";
   echo $showVolume;
   echo "

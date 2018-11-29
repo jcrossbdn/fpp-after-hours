@@ -3,7 +3,7 @@
 This plugin allows you to configure internet radio streams for playback after show hours
 
 ### Known limitations / Gotchas
-  - There is a known bug with fpp 2.5 that prevents scripts from running from playlists. You must switch to the master branch to use scripts (see https://falconchristmas.com/forum/index.php?topic=10032.0 for details) ***This is fixed in v2.6
+  - There is a known bug with fpp 2.5 that prevents scripts from running from playlists. You must switch to the master branch to use scripts (see https://falconchristmas.com/forum/index.php?topic=10032.0 for details)
   
 ### Getting Started
 1. Install the plugin
@@ -41,6 +41,10 @@ The plugin page is separated into a few sections:
 5. When it finds an online station it will start the stream
 6. The current volume will be saved as "Show Volume" and the fpp volume will be adjusted if you have a value in the volume column for that station.
 
+### How does volume work
+When the Run Start Script button or fpp-after-hours-start.php script is executed the script will capture the current volume of the pi and save it to a file.  
+When the Run Stop Script button or fpp-after-hours-stop.php script is executed the script will reset the pi volume to the volume level previously captured.  
+Volume + and - buttons will not be clickable if there is currently no stream playing (to prevent you from monkeying up your show volume level)
 
 ### Finding the URL of your favorite radio station
 There are several internet radio streams available and you just have to find something that can be played by the "mpc" player.  I have found that some .m3u links don't work but most .pls streams seem to (I have not explored why).
