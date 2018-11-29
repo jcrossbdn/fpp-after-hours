@@ -2,6 +2,9 @@
 /*autoupdated*/$pluginDirectory="/home/fpp/media/plugins/";
 /*autoupdated*/$pluginDataDirectory="/home/fpp/media/plugindata/";
 
+$alreadyRunning=false;
+if (file_exists($pluginDataDirectory."fpp-after-hours-streamRunning") && trim(file_get_contents($pluginDataDirectory."fpp-after-hours-streamRunning"))=="1") $alreadyRunning=true;
+
 if (file_exists($pluginDataDirectory."fpp-after-hours-config.json")) {
   $fah_config=json_decode(file_get_contents($pluginDataDirectory."fpp-after-hours-config.json"),true);
 }
@@ -19,12 +22,16 @@ if (count($fah_config['streams'])) {
       exec("mpc volume",$volRet);
       $vol=str_replace('volume: ',"",$volRet[0]);
       $vol=str_replace('%',"",$vol);
-      file_put_contents($pluginDataDirectory.'fpp-after-hours-showVolume',$vol);
+      if (!$alreadyRunning) file_put_contents($pluginDataDirectory.'fpp-after-hours-showVolume',$vol); //don't change the show volume if stream is already active
       exec("mpc clear && mpc add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& mpc volume {$pickme[$rnd]['volume']}" : "")." && mpc play");
+      file_put_contents($pluginDataDirectory."fpp-after-hours-streamRunning","1");
       break;
     }    
   }
-  else error_log("fpp-after-hours... ERROR: No reachable streams could be started");
+  else  {
+    error_log("fpp-after-hours... ERROR: No reachable streams could be started");
+    file_put_contents($pluginDataDirectory."fpp-after-hours-streamRunning","0");
+  }
 }
 
 function pingHost($host) {

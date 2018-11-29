@@ -1,7 +1,7 @@
 <?php
 $fah_config_file=$settings['mediaDirectory'].'/plugindata/fpp-after-hours-config.json';
 
-if (!isset($fah_config_file)) { //this is a first run so write start and stop scripts to "scriptDirectory"
+if (!isset($fah_config_file) || !file_exists($settings['scriptDirectory'].'/fpp-after-hours-start.php') || !file_exists($settings['scriptDirectory'].'/fpp-after-hours-stop.php')) { //this is a first run so write start and stop scripts to "scriptDirectory"
   //start script
   $file=updateScriptFile($settings['pluginDirectory'].'/fpp-after-hours/fpp-after-hours-startTemplate.php',$settings);
   file_put_contents($settings['scriptDirectory'].'/fpp-after-hours-start.php',$file);
@@ -10,6 +10,13 @@ if (!isset($fah_config_file)) { //this is a first run so write start and stop sc
   $file=updateScriptFile($settings['pluginDirectory'].'/fpp-after-hours/fpp-after-hours-stopTemplate.php',$settings);
   file_put_contents($settings['scriptDirectory'].'/fpp-after-hours-stop.php',$file);
 }
+
+//check for crontab file for stream monitoring
+if (!file_exists('/etc/cron.d/fpp-after-hours-cron') || file_get_contents('/etc/cron.d/fpp-after-hours-cron') != file_get_contents($settings['pluginDirectory'].'/fpp-after-hours/fpp-after-hours-cronTemplate')) {
+  exec("sudo cp {$settings['pluginDirectory']}/fpp-after-hours/fpp-after-hours-cronTemplate /etc/cron.d/fpp-after-hours-cron");
+  //echo "Updating cron configuration";
+}
+
 
 if (isset($_POST['fpp-after-hours-submit']) ) {
   if (file_exists($fah_config_file)) {
