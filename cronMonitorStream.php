@@ -8,18 +8,18 @@ if (file_exists($pluginDataDirectory."fpp-after-hours-streamRunning") && trim(fi
   //should be running so make sure
   exec('mpc current',$song);
   if (!isset($song[0])) {
-    echo "Is not running. Retry in 10";
+    //echo "Is not running. Retry in 10";
     sleep(10); //try again incase we were between songs
-    echo "Retry";
+    //echo "Retry";
     exec('mpc current',$song);
     if (!isset($song[0])) {
-    echo"still not running, restart";
+      //echo"still not running, restart";
       include $scriptDirectory.'/fpp-after-hours-start.php';
     }
   }
 }
 else { //should not be running
   exec("mpc stop && mpc clear"); //send kill command just in case
-  echo "Stopped and should not be running";
+  //echo "Stopped and should not be running";
 }
 ?>
