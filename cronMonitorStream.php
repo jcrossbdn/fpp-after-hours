@@ -4,7 +4,7 @@
 /*autoupdated*/$scriptDirectory="/home/fpp/media/scripts/";
 
 if (file_exists($pluginDataDirectory."fpp-after-hours-streamRunning") && trim(file_get_contents($pluginDataDirectory."fpp-after-hours-streamRunning"))=="1")  {
-  echo "Should be running";
+  //echo "Should be running";
   //should be running so make sure
   exec('mpc current',$song);
   if (!isset($song[0])) {
