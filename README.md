@@ -71,3 +71,6 @@ copy the http://192.111.140.11:8567 (ignore the ending slash and text) and that 
 6. Drag and drop the fpp-after-hours-start.php script right under the grey "Lead Out" row
 7. Click Save
 8. The after hours radio station will now start when your show ends and stop when your show is about to start (show volume is saved when fpp-after-hours-start.php is run and restored when fpp-after-hours-stop.php is run)
+
+###Monitoring
+This plugin adds a file to cron.d (system scheduler) to check if the stream is supposed to be running. If it is supposed to be running and is not (after an internet outage or station issue) then the stream will be restarted.  Also if the station is playing but is not supposed to be then the stream will be terminated and volume reset to show level. This check runs once every minute.
