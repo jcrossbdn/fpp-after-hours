@@ -1,0 +1,2 @@
+# fpp-after-hours stream monitoring script
+* * * * * fpp /usr/bin/php /home/fpp/media/plugins/fpp-after-hours/cronMonitorStream.php
