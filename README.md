@@ -71,6 +71,7 @@ copy the http://192.111.140.11:8567 (ignore the ending slash and text) and that 
 1. Once the plugin is configured you will see two scripts presented in the fpp File Manager in the Scripts tab, one called fpp-after-hours-start.php and the other called fpp-after-hours-stop.php.
 
 ### Start and stop after hours using fpp playlist and schedule settings
+![sample playlist](samplePlaylist.jpg)
 1. To start and stop the after hours radio station go to the desired playlist (Content Setup / Playlists / click the desired playlist).
 2. You can then add a new playlist entry, choose type: Script
 3. Choose the Script named fpp-after-hours-start.php and click add
@@ -83,13 +84,13 @@ copy the http://192.111.140.11:8567 (ignore the ending slash and text) and that 
 10. The after hours radio station will now start when your show ends and stop when your show is about to start (show volume is saved when fpp-after-hours-start.php is run and restored when fpp-after-hours-stop.php is run)
 
 ### Why do I need a pause if using a USB sound card
-With the USB sound card I have tested only one program can use the sound card at the same time. This pause ensures that the stop script has enough time to actually stop playing before fpp tries to start your playlist. If fpp tries to play music before after-hours has released fpp will error out and wait.
+With the USB sound card I have tested only one program can use the sound card at the same time. This pause ensures that the stop script has enough time to actually stop playing before fpp tries to start your playlist. If fpp tries to play music before after-hours has released fpp will error out and wait. It is best practice with this plugin to add a 1 second pause all the time.
 
-###Q & A
+### Q & A
 Q- I switched fpp to use a different sound card. Do I need to change anything in this plugin?
 A- The plugin will automatically detect new sound cards and configure mpd to use the same one as fpp. It is recommended that you press the volume up and then volume down once on the fpp Status Page Screen to ensure the volume is set properly on the new card.
 
-###Technical
+### Technical
 - mpd and mpc are used by this plugin to play music
 - a file is copied to cron.d to test for failed music. This cron will restart the playlist if problems are detected as long as the music is supposed to be operating
 - mpd is configured with all known sound cards, the currently selected fpp sound card is forced on during mpd playback
