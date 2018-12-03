@@ -89,7 +89,7 @@ With the USB sound card I have tested only one program can use the sound card at
 ### Q & A
 Q- I switched fpp to use a different sound card. Do I need to change anything in this plugin?
 
-A- The plugin will automatically detect new sound cards and configure mpd to use the same one as fpp. It is recommended that you press the volume up and then volume down once on the fpp Status Page Screen to ensure the volume is set properly on the new card.
+A- The plugin will automatically detect new sound cards and configure mpd to use the same one as fpp. It is recommended that you press the volume up and then volume down once on the fpp Status Page Screen to ensure the volume is set properly on the new card.  When a sound card is added or removed the plugin will take a few seconds to make necessary configuration changes and restart the mpd daemon when the start script is run (either through a playlist or by clicking Run Start Script. Subsequent start script runs should be instant.
 
 ### Technical
 - mpd and mpc are used by this plugin to play music
