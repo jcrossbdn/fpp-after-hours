@@ -323,12 +323,12 @@ class fppAfterHours {
   }
   
   public function checkGitUpdates() {
-    exec("cd /home/fpp/media/plugins/fpp-after-hours && git status",$ret);
+    exec("cd /home/fpp/media/plugins/fpp-after-hours && sudo git status",$ret);
     return $ret;
   }
   
   public function pluginGitUpdate() {
-    exec("cd /home/fpp/media/plugins/fpp-after-hours && git pull origin master",$ret);
+    exec("cd /home/fpp/media/plugins/fpp-after-hours && sudo git pull origin master",$ret);
     return $ret;
   }
   
