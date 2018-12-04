@@ -119,7 +119,8 @@ if (isset($_GET['loadInternetMedia'])) { //internet radio tab
 // *********************************************************************************************************************************************************************************************************************
 // ********************************************************************************************************* S T A R T   A D V A N C E D *******************************************************************
 if (isset($_GET['fah-adv-updatePlugin'])) {
-  $git=$fah->pluginGitUpdate();
+  (isset($_GET['gitHard']) ? $hard=true : $hard=false);
+  $git=$fah->pluginGitUpdate($hard);
   if (count($git)) {
     foreach ($git as $g) echo "<ul>$g</ul>";
   }
@@ -133,6 +134,7 @@ if (isset($_GET['loadAdvanced'])) {  //local media tab
   echo ($fah->checkForNewSoundCard()===true ? "There are sound cards in the system that are not configured in mpd. Click Run Start Script to load them<br><br>":"All system sound cards are currently loaded into mpd.<br><i>If you have changed the active sound card in fpp settings then you will have to click Run Start Script to update this plugin</i>");
   
   echo "<br><br><hr><strong>Plugin Github Status</strong> &nbsp; <a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&fah-adv-updatePlugin&nopage'>Click here to update</a><br>";
+  echo "<a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&fah-adv-updatePlugin&gitHard&nopage'>reset --hard</a> if you have made local changes to the plugin<br><br>";
   $git=$fah->checkGitUpdates();
   if (count($git)) {
     foreach ($git as $g) echo "<ul>$g</ul>";
