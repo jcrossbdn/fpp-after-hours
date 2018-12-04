@@ -321,7 +321,16 @@ class fppAfterHours {
     }
     return false;
   }
-
+  
+  public function checkGitUpdates() {
+    exec("cd /home/fpp/media/plugins/fpp-after-hours && git status",$ret);
+    return $ret;
+  }
+  
+  public function pluginGitUpdate() {
+    exec("cd /home/fpp/media/plugins/fpp-after-hours && git pull origin master",$ret);
+    return $ret;
+  }
   
   public function pingInternetRadio($host) {
     $purl=parse_url($host);

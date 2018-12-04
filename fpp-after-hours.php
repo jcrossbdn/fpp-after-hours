@@ -51,19 +51,20 @@ if (isset($_GET['loadLocalMedia'])) {  //local media tab
 // *********************************************************************************************************************************************************************************************************************
 // ********************************************************************************************************* S T A R T    I N T E R N E T    R A D I O *******************************************************************
 
-if (isset($_POST['fah-submitInternet']) ) {
-  //add a new stream
+if (isset($_POST['fah-submitInternet']) || isset($_POST['fah-deleteStream'])) {
+  //add a new stream - also handles deletes so adds, updates and deletes are handled at the same time
   if (trim($_POST['fah-newStreamName']) != '' && trim($_POST['fah-newStreamURL']) != '') {
     $name=trim($_POST['fah-newStreamName']);
     $url=trim($_POST['fah-newStreamURL']);
     @$fah->config->streams->$name=(object)array('url'=>$url, 'active'=>0, 'priority'=>9, 'volume'=>'-');
   }
-  
+
   //update an existing stream
   if (isset($_POST['priority'])) { //only update if there is at least 1 existing item posted
     foreach ($_POST['priority'] as $streamName=>$null) {
       //handle deletes
       if (trim($_POST['priority'][$streamName])=='' && trim($_POST['volume'][$streamName])=='' && trim($_POST['streamName'][$streamName])=='' && trim($_POST['url'][$streamName])=='') unset($fah->config->streams->$streamName);
+      elseif (isset($_POST['fah-deleteStream']) && isset($_POST['fah-deleteStream'][$streamName])) unset($fah->config->streams->$streamName);
       else { //handle everything else
         @$fah->config->streams->$streamName->priority=intval(trim($_POST['priority'][$streamName]));
         @$fah->config->streams->$streamName->volume=(trim($_POST['volume'][$streamName])=='-' ? '-' : intval(trim($_POST['volume'][$streamName])));
@@ -85,12 +86,12 @@ if (isset($_POST['fah-submitInternet']) ) {
 if (isset($_GET['loadInternetMedia'])) { //internet radio tab
   echo "<font size=-1><form method='post' enctype='multipart/form-data' action='?plugin=fpp-after-hours&page=fpp-after-hours.php&activeTab=1'>";
   echo "<input type='checkbox' name='activeSource[internet]'".($fah->getActiveSource()=='internet' ? " checked" : "")."> Internet Radio is the After Hours Music Source<br><br>";
-  echo "<table border=1><tr><td>Active</td><td>Priority</td><td>Volume</td><td>Status</td><td>Stream Name</td><td>Stream URL</td></tr>";
+  echo "<table border=1><tr><td>Active</td><td>Priority</td><td>Volume</td><td>Status</td><td>Stream Name</td><td>Stream URL</td><td>Options</td></tr>";
   
   if (isset($fah->config->streams) && count($fah->config->streams)) {
     foreach ($fah->config->streams as $streamName=>$streamData) {
       echo "<tr><td><input type='checkbox' name='active[$streamName]'".($streamData->active==0 ? "" : " checked")."></td><td><input type='text' size=3 name='priority[$streamName]' value='{$streamData->priority}'></td>
-      <td><input type='text' size=3 name='volume[$streamName]' value='{$streamData->volume}'></td><td>".($fah->pingInternetRadio($streamData->url)===true ? "Reachable":"<font color='red'>Unreachable</font>")."</td><td><input type='text' size=30 name='streamName[$streamName]' value='$streamName'></td><td><input type='text' size=50 name='url[$streamName]' value='{$streamData->url}'></td></tr>";
+      <td><input type='text' size=3 name='volume[$streamName]' value='{$streamData->volume}'></td><td>".($fah->pingInternetRadio($streamData->url)===true ? "Reachable":"<font color='red'>Unreachable</font>")."</td><td><input type='text' size=30 name='streamName[$streamName]' value='$streamName'></td><td><input type='text' size=50 name='url[$streamName]' value='{$streamData->url}'></td><td><input type='submit' name='fah-deleteStream[$streamName]' value='Delete'></td></tr>";
     }
   }
   else echo "<tr><td colspan=6>No streams have been entered yet</td></tr>";
@@ -117,10 +118,26 @@ if (isset($_GET['loadInternetMedia'])) { //internet radio tab
 
 // *********************************************************************************************************************************************************************************************************************
 // ********************************************************************************************************* S T A R T   A D V A N C E D *******************************************************************
+if (isset($_GET['fah-adv-updatePlugin'])) {
+  $git=$fah->pluginGitUpdate();
+  if (count($git)) {
+    foreach ($git as $g) echo "<ul>$g</ul>";
+  }
+  echo "<strong>Command Complete.</strong> &nbsp; &nbsp; <a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&activeTab=2'>Click here to go back</a>";
+  exit;
+}
+
 if (isset($_GET['loadAdvanced'])) {  //local media tab
   echo "<font size=-1>";
-  echo "FPP Active Sound Card: ".$fah->getFPPActiveSoundCardName()."<br><br>";
+  echo "<strong>FPP Active Sound Card:</strong> ".$fah->getFPPActiveSoundCardName()."<br><br>";
   echo ($fah->checkForNewSoundCard()===true ? "There are sound cards in the system that are not configured in mpd. Click Run Start Script to load them<br><br>":"All system sound cards are currently loaded into mpd.<br><i>If you have changed the active sound card in fpp settings then you will have to click Run Start Script to update this plugin</i>");
+  
+  echo "<br><br><hr><strong>Plugin Github Status</strong> &nbsp; <a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&fah-adv-updatePlugin&nopage'>Click here to update</a><br>";
+  $git=$fah->checkGitUpdates();
+  if (count($git)) {
+    foreach ($git as $g) echo "<ul>$g</ul>";
+  }
+  
   echo "</font>";
   exit;
 }
