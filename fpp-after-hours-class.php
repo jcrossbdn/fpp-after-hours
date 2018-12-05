@@ -328,7 +328,8 @@ class fppAfterHours {
   }
   
   public function pluginGitUpdate($hard=false) {
-    exec("cd /home/fpp/media/plugins/fpp-after-hours".($hard===true ? " && sudo git reset --hard":"")." && sudo git fetch --all && sudo git pull origin",$ret);
+    //exec("cd /home/fpp/media/plugins/fpp-after-hours".($hard===true ? " && sudo git reset --hard":"")." && sudo git fetch --all && sudo git pull origin",$ret);
+    exec(($hard===true ? "cd /home/fpp/media/plugins/fpp-after-hours && sudo git reset --hard && ":"")."/opt/fpp/scripts/update_plugin fpp-after-hours",$ret);
     return $ret;
   }
   
