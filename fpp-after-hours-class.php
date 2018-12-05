@@ -10,7 +10,7 @@ class fppAfterHours {
   public $cronOkay; //cron.d file not loaded or changed (boolean)
   public $scriptsOkay; //fpp scripts not loaded or changed (boolean)
 
-  public function __construct($uiRequest=true) { //uiRequest - when calling class from cron or external script we don't need to load all the data into the instance
+  public function __construct($uiRequest=true) {
     $this->pluginName='fpp-after-hours';
     
     //if (!isset($GLOBALS['settings']['pluginDirectory'])) { //if class is called from outside fpp ui, load the variables we need from fpp config.php
@@ -28,14 +28,12 @@ class fppAfterHours {
     @$this->directories->crondDirectory="/etc/cron.d/";
     @$this->loadConfigFile();
     
-    //if ($uiRequest) {
-      $this->checkDependenciesLoaded();
-      $this->checkIsMusicRunning();
-      $this->checkMusicShouldBeRunning();
-      $this->getSavedShowVolume();
-      $this->refreshCronOkayFlag();
-      $this->refreshScriptsOkayFlag();
-    //}
+    $this->checkDependenciesLoaded();
+    $this->checkIsMusicRunning();
+    $this->checkMusicShouldBeRunning();
+    $this->getSavedShowVolume();
+    $this->refreshCronOkayFlag();
+    $this->refreshScriptsOkayFlag();
   }
   
   public function saveConfigFile() {
@@ -85,11 +83,11 @@ class fppAfterHours {
     else $this->dependenciesAreLoaded=false;
   }
   public function installDependencies() {
-    exec('sudo apt-get -y install mpd mpc',$out);
+    exec('sudo apt-get -y update && sudo apt-get -y install mpd mpc',$out);
     return $out;
   }
   
-  public function checkIsMusicRunning() { //returns mpc command output so 
+  public function checkIsMusicRunning() { //returns mpc command output 
     exec("mpc",$status);
     $this->musicIsRunning=false;
     if (count($status)) {
@@ -175,13 +173,15 @@ class fppAfterHours {
   public function getSystemSoundCards() {
     exec("sudo aplay -l | grep '^card' | sed -e 's/^card //' -e 's/:[^\[]*\[/:/' -e 's/\].*\[.*\].*//' | uniq",$cards);
     if (count($cards)) {
-      foreach ($cards as $id=>$name) {
+      foreach ($cards as $name) {
         $pn=explode(":",$name);
-        $cardName='';
-        for ($inta=1; $inta<count($pn); $inta++) $cardName.=$pn[$inta].":";
-        $out[$pn[0]]['cardName']=substr($cardName,0,-1); //remove trailing :        
+        if (isset($pn[0]) && isset($pn[1])) {
+          $cardName='';
+          for ($inta=1; $inta<count($pn); $inta++) $cardName.=$pn[$inta].":";
+          @$out[$pn[0]]->cardName=substr($cardName,0,-1); //remove trailing :
+        }        
       }
-      return json_decode(json_encode($out));
+      return $out;
     }
     return false;
   }
@@ -274,7 +274,7 @@ class fppAfterHours {
     if (isset($fppOutputArr) && count($fppOutputArr)) {
       $fppOutput=intval($fppOutputArr[1]);
       $systemCards=$this->getSystemSoundCards();
-      if (isset($systemCards[$fppOutput])) return $systemCards[$fppOutput]->cardName;      
+      if ($systemCards !== false && isset($systemCards[$fppOutput])) return $systemCards[$fppOutput]->cardName;      
     }
     return false;
   }
