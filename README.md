@@ -4,7 +4,7 @@ This plugin allows you to configure music sources for playback typically outside
 
 ### Known limitations / Gotchas
   - There is a known bug with fpp 2.5 that prevents scripts from running from playlists. You must switch to the master branch to use scripts (see https://falconchristmas.com/forum/index.php?topic=10032.0 for details)
-  - When using a USB sound card you must add at least a 1 second pause entry in the playlist after the fpp-after-hours-stop.php script is called (failure to do this could cause your show to halt)
+  - You must add at least a 1 second pause entry in the playlist after the fpp-after-hours-stop.php script is called (failure to do this could cause your show to halt especially if using a USB sound card).
   
 ### Getting Started
 1. Get sound working through fpp (ensure proper sound card is selected, go to Status/Control and then Status Page and click volume + and then volume - once (this ensures the volume is set to match fpp as there are sometimes inconsistencies)
