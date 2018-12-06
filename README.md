@@ -9,7 +9,8 @@ This plugin allows you to configure music sources for playback typically outside
 ### Getting Started
 1. Get sound working through fpp (ensure proper sound card is selected, go to Status/Control and then Status Page and click volume + and then volume - once (this ensures the volume is set to match fpp as there are sometimes inconsistencies)
 2. Install the plugin
-   - from the command line type: sudo git clone git://github.com/jcrossbdn/fpp-after-hours /home/fpp/media/plugins/fpp-after-hours
+   - from the fpp user interface, Content Setup / Plugins, click on the down arrow beside FPP After Hours
+   - (or for advanced users) from the command line type: sudo git clone git://github.com/jcrossbdn/fpp-after-hours /home/fpp/media/plugins/fpp-after-hours
 3. Navigate to the "Content Setup" menu in the Falcon Player User Interface and then the "After Hours Music" option. If you dont see this option then refresh your browser window.
 4. You will then be presented with the After Hours plugin home page.
 5. You will likely see only a screen that says "Additional Software Must Be Installed". Click the "Install now" button to install Media Player Daemon (mpd) and a control interface called mpc.  The after hours music plugin uses these applications to play music and are not optional. 
