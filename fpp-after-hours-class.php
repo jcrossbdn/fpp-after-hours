@@ -35,6 +35,11 @@ class fppAfterHours {
     $this->getSavedShowVolume();
     $this->refreshCronOkayFlag();
     $this->refreshScriptsOkayFlag();
+    $this->ensureScriptsExecutable();
+  }
+  
+  public function ensureScriptsExecutable() {
+    chmod($this->directories->pluginDirectory."fpp_uninstall.sh", 0744);
   }
   
   public function saveConfigFile() {
