@@ -26,6 +26,7 @@ class fppAfterHours {
     @$this->directories->pluginDataDirectory="/home/fpp/media/plugindata/";
     @$this->directories->scriptDirectory="/home/fpp/media/scripts/";
     @$this->directories->crondDirectory="/etc/cron.d/";
+    @$this->directories->playlistDirectory="/home/fpp/media/playlists/";
     @$this->loadConfigFile();
     
     $this->checkDependenciesLoaded();
@@ -331,6 +332,30 @@ class fppAfterHours {
     //exec("cd /home/fpp/media/plugins/fpp-after-hours".($hard===true ? " && sudo git reset --hard":"")." && sudo git fetch --all && sudo git pull origin",$ret);
     exec(($hard===true ? "cd /home/fpp/media/plugins/fpp-after-hours && sudo git reset --hard && ":"")."/opt/fpp/scripts/update_plugin fpp-after-hours",$ret);
     return $ret;
+  }
+  
+  public function getDebugData() {
+    $schedules=array_map('str_getcsv',file('/home/fpp/media/schedule'));
+    if ($schedules===false) return false;
+    $d = dir($this->directories->playlistDirectory);
+    while (false !== ($entry = $d->read())) {
+      if ($entry=='.' || $entry=='..') continue;
+      $pathInfo=pathinfo($this->directories->playlistDirectory.$entry);
+      if (strtolower($pathInfo['extension'])=='json') {
+        $obj=json_decode(file_get_contents($this->directories->playlistDirectory.$entry));
+        if ($obj !== null) {
+          foreach ($schedules as $sched) {
+            if ($sched[1]==$obj->name) $obj->schedule=implode(",",$sched);
+          }
+        }
+        $out[]=$obj;
+      }
+      else {
+        $out[]="non json playlist file:<br>".file_get_contents($this->directories->playlistDirectory.$entry);
+      }
+    }
+    $out['allSchedules']=print_r(file_get_contents('/home/fpp/media/schedule'),true);
+    return $out;
   }
   
   public function pingInternetRadio($host) {

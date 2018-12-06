@@ -140,6 +140,13 @@ if (isset($_GET['loadAdvanced'])) {  //local media tab
     foreach ($git as $g) echo "<ul>$g</ul>";
   }
   
+  echo "<br><br><hr><strong>If asked to provide Advanced debug data please copy everything in the grey box below</strong> (there is no sensitive data here)<br>";
+  echo "<pre>Settings<br>";
+  print_r($settings);
+  echo "<hr>Playlists and Schedules<br>";
+  print_r($fah->getDebugData());
+  echo "</pre>";
+  
   echo "</font>";
   exit;
 }
