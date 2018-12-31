@@ -141,7 +141,11 @@ if (isset($_GET['loadAdvanced'])) {  //local media tab
   }
   
   echo "<br><br><hr><strong>If asked to provide Advanced debug data please copy everything in the grey box below</strong> (there is no sensitive data here)<br>";
-  echo "<pre>Settings<br>";
+  echo "<pre>All Sound Cards<br>";
+  print_r($fah->getSystemSoundCards());
+  echo "<br>";
+  
+  echo "Settings<br>";
   print_r($settings);
   echo "<hr>Playlists and Schedules<br>";
   print_r($fah->getDebugData());
