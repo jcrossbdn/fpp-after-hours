@@ -172,8 +172,8 @@ class fppAfterHours {
   
   
   public function getSystemSoundCards() {
-    exec("sudo aplay -l | grep '^card' | sed -e 's/^card //' -e 's/:[^\[]*\[/:/' -e 's/\].*\[.*\].*//' | uniq",$cards);
-    if (count($cards)) {
+    //exec("sudo aplay -l | grep '^card' | sed -e 's/^card //' -e 's/:[^\[]*\[/:/' -e 's/\].*\[.*\].*//' | uniq",$cards);
+    /*if (count($cards)) {
       foreach ($cards as $name) {
         $pn=explode(":",$name);
         if (isset($pn[0]) && isset($pn[1])) {
@@ -185,6 +185,24 @@ class fppAfterHours {
       return $out;
     }
     return false;
+    */
+    exec("sudo aplay -l",$cards);
+    $cardStr="";
+    if (count($cards)) {
+      foreach ($cards as $card) $cardStr.=$card."\n";
+    }
+    
+    $out=array();
+    preg_match_all('/^card (.*?):(.*?\[(.*?)\])/m',$cardStr,$cardDetail);
+    if (count($cardDetail[0])) {
+      foreach ($cardDetail[0] as $key=>$null) {
+        $cardNo=$cardDetail[1][$key];
+        $cardName=$cardDetail[3][$key];
+        @$out[$cardNo]->cardName=$cardName;
+      }
+      return $out;
+    }
+    return false;    
   }
   
   public function getMPDConfig() {
