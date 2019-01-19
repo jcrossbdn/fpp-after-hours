@@ -1,0 +1,24 @@
+{
+    "repoName": "fpp-after-hours",
+    "name": "After Hours Music Player Plugin",
+    "author": "Jason Cross (jcross)",
+    "description": "This plugin allows you to configure music sources for playback typically outside of show hours.",
+    "homeURL": "https://github.com/jcrossbdn/fpp-after-hours",
+    "srcURL": "https://github.com/jcrossbdn/fpp-after-hours.git",
+    "bugURL": "https://github.com/jcrossbdn/fpp-after-hours/issues",
+    "versions": [
+        {
+            "minFPPVersion": 2.3,
+            "maxFPPVersion": 0,
+            "branch": "master",
+            "allowUpdates": 1,
+            "sha": "",
+            "dependencies": {
+                "packages": [
+                    "mpd",
+                    "mpc"
+                ]
+            }
+        }
+    ]
+}
