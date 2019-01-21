@@ -8,8 +8,8 @@
     "bugURL": "https://github.com/jcrossbdn/fpp-after-hours/issues",
     "versions": [
         {
-            "minFPPVersion": 2.3,
-            "maxFPPVersion": 0,
+            "minFPPVersion": "2.3",
+            "maxFPPVersion": "0",
             "branch": "master",
             "allowUpdates": 1,
             "sha": "",
