@@ -144,7 +144,7 @@ if (isset($_GET['loadAdvanced'])) {  //local media tab
   //echo "<pre>All Sound Cards<br>";
   //print_r($fah->getSystemSoundCards());
   //echo "<br>";
-  
+  echo "<pre>";
   echo "Settings<br>";
   print_r($settings);
   echo "<hr>Playlists and Schedules<br>";
