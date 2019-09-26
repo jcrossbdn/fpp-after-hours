@@ -1,5 +1,6 @@
 <?php
 ini_set('display_errors',true);
+error_reporting(E_ERROR);
 require_once $settings['pluginDirectory'].'/fpp-after-hours/fpp-after-hours-class.php';
 
 $fah=new fppAfterHours();
