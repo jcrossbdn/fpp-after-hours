@@ -219,7 +219,11 @@ class fppAfterHours {
       $out['full']=$mpdConf;
       $out['noOutputs']=$mpdConf;
       $out['outputBlock']="";
-    } 
+    }
+    
+    preg_match_all('/^(?:(#port\t|port\t)).*?(".*?")\n/sim', $mpdConf,$port);
+    $out['port']['full']=$port[0][0]; //track for future find/replace if required
+    $out['port']['number']=str_replace('"','',$port[2][0]);
       
     preg_match_all('/.*?\s(type|name|device|mixer_type).*?\"(.*?)\"/sim', $out['outputBlock'], $entries);
     if (count($entries) && count($entries[1])) {
