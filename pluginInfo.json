@@ -10,6 +10,19 @@
         {
             "minFPPVersion": "2.3",
             "maxFPPVersion": "2.9999",
+            "branch": "2.3-2.9999",
+            "allowUpdates": 1,
+            "sha": "",
+            "dependencies": {
+                "packages": [
+                    "mpd",
+                    "mpc"
+                ]
+            }
+        },
+        {
+            "minFPPVersion": "3.0",
+            "maxFPPVersion": "3.9999",
             "branch": "master",
             "allowUpdates": 1,
             "sha": "",
