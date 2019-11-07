@@ -35,6 +35,7 @@ class fppAfterHours {
     $this->getSavedShowVolume();
     $this->refreshCronOkayFlag();
     $this->refreshScriptsOkayFlag();
+    $this->checkForMPDFormat(); //do this only so we don't have to update startup script to perform the format and bitrate mpd.conf update - 2019-11-06
   }
   
   public function saveConfigFile() {
@@ -57,6 +58,18 @@ class fppAfterHours {
       $this->config=json_decode(file_get_contents(($this->directories->pluginDataDirectory.$this->pluginName."-config.json")));
     else 
       $this->config=false;
+      
+    //upgrade volume in streams config since new version does not use the show volume setting from fpp
+    if (isset($this->config->streams)) {
+    	$update=false;
+      foreach ($this->config->streams as $key=>$data) {
+        if ($data->volume=="-") {
+					$this->config->streams->$key->volume=100;
+					$update=true;
+				} 
+      }
+      if ($update) self::saveConfigFile();
+    }
   }
   
   public function getActiveSource() { //is local or internet the active source
@@ -84,7 +97,7 @@ class fppAfterHours {
     else $this->dependenciesAreLoaded=false;
   }
   public function installDependencies() {
-    exec('sudo apt-get -y update && sudo apt-get -y install mpd mpc',$out);
+    exec('sudo apt-get -y update && sudo apt-get -y install mpd mpc && sudo reboot',$out);
     return $out;
   }
   
@@ -225,7 +238,7 @@ class fppAfterHours {
     $out['port']['full']=$port[0][0]; //track for future find/replace if required
     $out['port']['number']=str_replace('"','',$port[2][0]);
       
-    preg_match_all('/.*?\s(type|name|device|mixer_type).*?\"(.*?)\"/sim', $out['outputBlock'], $entries);
+    preg_match_all('/.*?\s(type|name|device|mixer_type|format).*?\"(.*?)\"/sim', $out['outputBlock'], $entries);
     if (count($entries) && count($entries[1])) {
       $index=0; //creates new index for each config group
       $out['outputEntries']=array();
@@ -255,7 +268,7 @@ class fppAfterHours {
   }
   
   public function checkForRemovedSoundCards() {
-    $mppd=$this->getMPDConfig();
+		$mppd=$this->getMPDConfig();
     $out=false;
     if (count($mppd->outputEntries)) {
       $system=$this->getSystemSoundCards();
@@ -277,8 +290,8 @@ class fppAfterHours {
   }
   
   public function checkForNewSoundCard() { //returns t/f on whether a new sound card has been found
-    $cardToMPD=$this->getSystemSoundCardToMPD();
-    if ($cardToMPD !== false && count($cardToMPD)) {
+		$cardToMPD=$this->getSystemSoundCardToMPD();
+    if ($cardToMPD !== false && is_object($cardToMPD)) {
       $newCardFound=false;
       foreach ($cardToMPD as $val) {
         if ($val===false) {
@@ -289,6 +302,19 @@ class fppAfterHours {
       return $newCardFound;
     }
     return false;
+  }
+  
+  public function checkForMPDFormat() { //reloads the config if an old mpd config exists that does not contain format and bitrate variables in the audio_output definitions
+    $config=self::getMPDConfig();
+		if (isset($config->outputEntries) && count($config->outputEntries)) {
+			foreach ($config->outputEntries as $entry) {
+	    	if (!isset($entry->format))  { //format does not exist so force update the config file
+					self::updateMPDConfig(true); //forceable update the mpd config file
+					exec("sudo systemctl restart mpd.service");
+					return true;
+				}
+	    }
+    }
   }
   
   public function getFPPActiveSoundCardName() {
@@ -302,9 +328,9 @@ class fppAfterHours {
     return false;
   }
   
-  public function updateMPDConfig() { //updates mpd config file if it is required
+  public function updateMPDConfig($forceUpdate=false) { //updates mpd config file if it is required
     $cardToMPD=$this->getSystemSoundCardToMPD();
-    if ($cardToMPD !== false && count($cardToMPD)) {
+    if ($cardToMPD !== false && is_object($cardToMPD)) {
       $requiresUpdate=false;
       foreach ($cardToMPD as $val) {
         if ($val===false) {
@@ -313,7 +339,7 @@ class fppAfterHours {
         }
       }
       if ($this->checkForRemovedSoundCards() !== false) $requiresUpdate=true; //remove uninstalled sound cards from mpd config file
-      if ($requiresUpdate) {
+      if ($requiresUpdate || $forceUpdate) {
         $sysCards=$this->getSystemSoundCards();
         if (count($sysCards)) {
           $audio_output="";
@@ -325,20 +351,22 @@ class fppAfterHours {
           if ($mpdConfig===false) return false;
           $newConfig=$audio_output."\n\n".trim($mpdConfig->noOutputs)."\n";
 
-          if (file_put_contents($this->directories->pluginDataDirectory."fpp-after-hours-mpdConfig",$newConfig)) {
+					if (file_put_contents($this->directories->pluginDataDirectory."fpp-after-hours-mpdConfig",$newConfig)) {
             if (!file_exists($this->directories->pluginDataDirectory."fpp-after-hours-mpdOriginal.conf")) exec("yes | sudo cp -rf /etc/mpd.conf {$this->directories->pluginDataDirectory}fpp-after-hours-mpdOriginal.conf"); //make a backup of this file
             exec("yes | sudo cp -rf {$this->directories->pluginDataDirectory}fpp-after-hours-mpdConfig /etc/mpd.conf");
             unlink("{$this->directories->pluginDataDirectory}fpp-after-hours-mpdConfig");
-            exec("sudo mpd --kill");
-            sleep(3);
-            exec("sudo mpd");
-            sleep(3);
-          }
-          unset($mpdConfig);
-          unset($newConfig);
-          
-          if ($this->checkForNewSoundCard()===false) return true; //update successful
-          return false;
+	          if (!$forceUpdate) {  
+							exec("sudo mpd --kill");
+	            sleep(3);
+	            exec("sudo mpd");
+	            sleep(3);
+	          }
+	          unset($mpdConfig);
+	          unset($newConfig);
+	          
+	          if ($this->checkForNewSoundCard()===false) return true; //update successful
+	          return false;
+	        }
         }
       }
     }
