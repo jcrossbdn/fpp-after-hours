@@ -68,7 +68,7 @@ if (isset($_POST['fah-submitInternet']) || isset($_POST['fah-deleteStream'])) {
       elseif (isset($_POST['fah-deleteStream']) && isset($_POST['fah-deleteStream'][$streamName])) unset($fah->config->streams->$streamName);
       else { //handle everything else
         @$fah->config->streams->$streamName->priority=intval(trim($_POST['priority'][$streamName]));
-        @$fah->config->streams->$streamName->volume=(trim($_POST['volume'][$streamName])=='-' ? '-' : intval(trim($_POST['volume'][$streamName])));
+        @$fah->config->streams->$streamName->volume=(trim($_POST['volume'][$streamName])=='-' ? '100' : intval(trim($_POST['volume'][$streamName])));
         @$fah->config->streams->$streamName->url=trim($_POST['url'][$streamName]);
         if (isset($_POST['active'][$streamName])) $fah->config->streams->$streamName->active=1;
         else $fah->config->streams->$streamName->active=0;
@@ -233,7 +233,7 @@ else {    // ************************************************** M A I N    P L U
             <table border=0><tr><td><a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&runStartScript&nopage'>Run Start Script</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&runStopScript&nopage'>Run Stop Script</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a id='fpp-after-hours-vup' href='?plugin=fpp-after-hours&page=fpp-after-hours.php&vup&nopage'>Volume +</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a id='fpp-after-hours-vup' href='?plugin=fpp-after-hours&page=fpp-after-hours.php&vdn&nopage'>Volume -</a></td></tr></table>
     ";
 
-    if ($fah->musicShouldBeRunning) echo "Volume will be reset to $fah->showVolume  (Show Level) when Stop Script is executed";
+    //if ($fah->musicShouldBeRunning) echo "Volume will be reset to $fah->showVolume  (Show Level) when Stop Script is executed";
     
     echo "      
           </div>
