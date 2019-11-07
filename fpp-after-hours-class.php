@@ -319,7 +319,7 @@ class fppAfterHours {
           $audio_output="";
           foreach ($sysCards as $cardNo=>$data1) {
             $type="alsa";
-            $audio_output.="audio_output {\n\ttype\t\"$type\"\n\tname\t\"$data1->cardName\"\n\tdevice\t\"hw:$cardNo,0\"\n\tmixer_type\t\"software\"\n}\n";
+            $audio_output.="audio_output {\n\ttype\t\"$type\"\n\tname\t\"$data1->cardName\"\n\tdevice\t\"hw:$cardNo,0\"\n\tmixer_type\t\"software\"\n\tformat\t\"44100:16:2\"\n\tbitrate\t\"128\"\n}\n";
           }
           $mpdConfig=$this->getMPDConfig();
           if ($mpdConfig===false) return false;
