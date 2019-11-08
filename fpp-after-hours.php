@@ -178,7 +178,7 @@ if (!$fah->dependenciesAreLoaded) {
   <div id=\"elements\" class=\"settings\">
     <fieldset>
       <legend>! ! ! Additional Software Must Be Installed ! ! !</legend>
-      <div align=\"center\"><a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&installDependencies'>Install now (this may take several minutes)</a><br>will run <i>sudo apt-get -y update && sudo apt-get -y install mpd mpc && sudo reboot</i></div>
+      <div align=\"center\"><a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&installDependencies'>Install now (this may take several minutes)</a><br>will run <i>sudo apt-get -y update && sudo apt-get -y install mpd mpc</i></div>
     </fieldset>
   </div>
   <br><br>
