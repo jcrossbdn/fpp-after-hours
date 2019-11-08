@@ -97,7 +97,7 @@ class fppAfterHours {
     else $this->dependenciesAreLoaded=false;
   }
   public function installDependencies() {
-    exec('sudo apt-get -y update && sudo apt-get -y install mpd mpc && sudo reboot',$out);
+    exec('sudo apt-get -y update && sudo apt-get -y install mpd mpc',$out);
     return $out;
   }
   
