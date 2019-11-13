@@ -385,6 +385,7 @@ class fppAfterHours {
   }
   
   public function getDebugData() {
+    $out['fpp-after-hoursConfig']=$this->config;    
     $schedules=array_map('str_getcsv',file('/home/fpp/media/schedule'));
     if ($schedules===false) return false;
     $d = dir($this->directories->playlistDirectory);
