@@ -253,7 +253,7 @@ class fppAfterHours {
   }
   
   public function getSystemSoundCardToMPD() { //returns all system sound card names and t/f whether they are loaded into mpd
-    exec("mpc output",$arr);
+    exec("mpc outputs",$arr);
     if (count($arr)) {
       $system=$this->getSystemSoundCards();
       if ($system===false) return false; //no sound cards exist on system so we don't care what mpd knows about
