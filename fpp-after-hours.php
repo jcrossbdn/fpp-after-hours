@@ -148,7 +148,17 @@ if (isset($_GET['loadAdvanced'])) {  //local media tab
   echo "<pre>";
   echo "Settings<br>";
   print_r($settings);
-  echo "<hr>Playlists and Schedules<br>";
+  echo "<hr>fpp-after-hours class variables<br>";
+  print_r($fah);
+  echo "<hr>getFPPActiveSoundCardName<br>";
+  print_r($fah->getFPPActiveSoundCardName());
+  echo "<hr>getSystemSoundCards function return<br>";
+  print_r($fah->getSystemSoundCards());
+  echo "<hr>getSystemSoundCardToMPD function return<br>";
+  print_r($fah->getSystemSoundCardToMPD());
+  echo "<hr>MPDConfig function return<br>";
+  print_r($fah->getMPDConfig());
+  echo "<hr>fpp-after-hours and Playlists and Schedules<br>";
   print_r($fah->getDebugData());
   echo "</pre>";
   
