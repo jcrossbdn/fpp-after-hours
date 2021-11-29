@@ -92,7 +92,7 @@ if (isset($_GET['loadInternetMedia'])) { //internet radio tab
   if (isset($fah->config->streams) && count($fah->config->streams)) {
     foreach ($fah->config->streams as $streamName=>$streamData) {
       echo "<tr><td><input type='checkbox' name='active[$streamName]'".($streamData->active==0 ? "" : " checked")."></td><td><input type='text' size=3 name='priority[$streamName]' value='{$streamData->priority}'></td>
-      <td><input type='text' size=3 name='volume[$streamName]' value='{$streamData->volume}'></td><td>".($fah->pingInternetRadio($streamData->url)===true ? "Reachable":"<font color='red'>Unreachable</font>")."</td><td><input type='text' size=30 name='streamName[$streamName]' value='$streamName'></td><td><input type='text' size=50 name='url[$streamName]' value='{$streamData->url}'></td><td><input type='submit' name='fah-deleteStream[$streamName]' value='Delete'></td></tr>";
+      <td><input type='text' size=3 name='volume[$streamName]' value='{$streamData->volume}'></td><td>".($fah->pingInternetRadio($streamData->url)===true ? "IP is pingable":"<font color='red'>IP is not pingable</font>")."</td><td><input type='text' size=30 name='streamName[$streamName]' value='$streamName'></td><td><input type='text' size=50 name='url[$streamName]' value='{$streamData->url}'></td><td><input type='submit' name='fah-deleteStream[$streamName]' value='Delete'></td></tr>";
     }
   }
   else echo "<tr><td colspan=6>No streams have been entered yet</td></tr>";
