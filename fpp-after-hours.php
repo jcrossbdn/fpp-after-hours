@@ -198,6 +198,11 @@ if (!$fah->dependenciesAreLoaded) {
 else {    // ************************************************** M A I N    P L U G I N   B O D Y ***************************************************
   if ($fah->config !== false) { //only show now play and control if the plugin has been configured (config file must exist)
     echo "
+      <style>
+        #tabs .ui-state-active {
+          background: #5ba63c !important;
+        }
+      </style>
       <script>
         function getElements() {
           $.ajax({
