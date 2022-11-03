@@ -57,7 +57,7 @@ if (isset($_POST['fah-submitInternet']) || isset($_POST['fah-deleteStream'])) {
   if (trim($_POST['fah-newStreamName']) != '' && trim($_POST['fah-newStreamURL']) != '') {
     $name=trim($_POST['fah-newStreamName']);
     $url=trim($_POST['fah-newStreamURL']);
-    @$fah->config->streams->$name=(object)array('url'=>$url, 'active'=>0, 'priority'=>9, 'volume'=>'-');
+    @$fah->config->streams->$name=(object)array('url'=>$url, 'active'=>1, 'priority'=>9, 'volume'=>'-');
   }
 
   //update an existing stream
