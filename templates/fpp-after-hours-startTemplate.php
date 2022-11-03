@@ -25,6 +25,7 @@ if ($fah->config !== false) {
           exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& mpc volume {$pickme[$rnd]['volume']} " : "")." && mpc play");
           
           $fah->setMusicRunningStatus(true);
+          $fah->setCurrentInternetRadioHost($pickme[$rnd]['url']);
           break;
         }
       }

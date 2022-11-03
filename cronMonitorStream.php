@@ -17,6 +17,18 @@ if ($fah->musicShouldBeRunning) {
           include $fah->directories->scriptDirectory.'/fpp-after-hours-start.php';
         }
       }
+      else {
+        $host=$fah->getCurrentInternetRadioHost();
+        if (trim($host) != '') {
+          if ($fah->pingInternetRadio($host)===false) { //stop this broken stream and attempt to restart or start a new one
+            exec("mpc stop && mpc clear");
+            $fah->setCurrentInternetRadioHost();
+            if (file_exists($fah->directories->scriptDirectory.'/fpp-after-hours-start.php')) {
+              include $fah->directories->scriptDirectory.'/fpp-after-hours-start.php';
+            }
+          }
+        }
+      }
     }
   }
 }

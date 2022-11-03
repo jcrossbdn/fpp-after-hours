@@ -86,7 +86,7 @@ if (isset($_POST['fah-submitInternet']) || isset($_POST['fah-deleteStream'])) {
 
 if (isset($_GET['loadInternetMedia'])) { //internet radio tab
   echo "<font size=-1><form method='post' enctype='multipart/form-data' action='?plugin=fpp-after-hours&page=fpp-after-hours.php&activeTab=1'>";
-  echo "<input type='checkbox' name='activeSource[internet]'".($fah->getActiveSource()=='internet' ? " checked" : "")."> Internet Radio is the After Hours Music Source<br><br>";
+  //echo "<input type='checkbox' name='activeSource[internet]'".($fah->getActiveSource()=='internet' ? " checked" : "")."> Internet Radio is the After Hours Music Source<br><br>";
   echo "<table border=1><tr><td>Active</td><td>Priority</td><td>Volume</td><td>Status</td><td>Stream Name</td><td>Stream URL</td><td>Options</td></tr>";
   
   if (isset($fah->config->streams) && count($fah->config->streams)) {
@@ -295,7 +295,8 @@ else {    // ************************************************** M A I N    P L U
   } 
   
   
-  $activeTab=(isset($_GET['activeTab']) ? $_GET['activeTab'] : ($fah->getActiveSource()=="local" ? 0 : 1));
+  //$activeTab=(isset($_GET['activeTab']) ? $_GET['activeTab'] : ($fah->getActiveSource()=="local" ? 0 : 1));
+  $activeTab=0; //only Internet Radio shows now
   echo "
     <script>
       $( function() {
@@ -310,7 +311,7 @@ else {    // ************************************************** M A I N    P L U
         <legend>FPP After Hours Music</legend> 
         <div id=\"tabs\">
           <ul>
-            <li><a href=\"?plugin=fpp-after-hours&page=fpp-after-hours.php&loadLocalMedia&nopage\">Local Media</a></li>
+            <!--<li><a href=\"?plugin=fpp-after-hours&page=fpp-after-hours.php&loadLocalMedia&nopage\">Local Media</a></li>-->
             <li><a href=\"?plugin=fpp-after-hours&page=fpp-after-hours.php&loadInternetMedia&nopage\">Internet Radio</a></li>
             <li><a href=\"?plugin=fpp-after-hours&page=fpp-after-hours.php&loadAdvanced&nopage\">Advanced</a></li>
           </ul>

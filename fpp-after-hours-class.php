@@ -54,9 +54,17 @@ class fppAfterHours {
   }
  
   public function loadConfigFile() {
-    if (file_exists($this->directories->pluginDataDirectory.$this->pluginName."-config.json")) 
+    /*if (file_exists($this->directories->pluginDataDirectory.$this->pluginName."-config.json")) 
       $this->config=json_decode(file_get_contents(($this->directories->pluginDataDirectory.$this->pluginName."-config.json")));
     else 
+      $this->config=false;
+    */
+    if (!file_exists($this->directories->pluginDataDirectory.$this->pluginName."-config.json")) 
+      $this->saveConfigFile();
+
+    if (file_exists($this->directories->pluginDataDirectory.$this->pluginName."-config.json"))
+      $this->config=json_decode(file_get_contents(($this->directories->pluginDataDirectory.$this->pluginName."-config.json")));
+    else
       $this->config=false;
       
     //upgrade volume in streams config since new version does not use the show volume setting from fpp
@@ -127,6 +135,14 @@ class fppAfterHours {
     else $value=false;
     file_put_contents($this->directories->pluginDataDirectory."fpp-after-hours-musicRunning",($value===true || $value===1 ? 1 : 0));
     $this->musicShouldBeRunning=$value;
+  }
+
+  public function setCurrentInternetRadioHost($value='') {
+    file_put_contents($this->directories->pluginDataDirectory."fpp-after-hours-musicHost",($value));
+  }
+  public function getCurrentInternetRadioHost() {
+    if (file_exists($this->directories->pluginDataDirectory."fpp-after-hours-musicHost")) return file_get_contents($this->directories->pluginDataDirectory."fpp-after-hours-musicHost");
+    return '';
   }
   
   
