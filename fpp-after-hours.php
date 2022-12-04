@@ -10,7 +10,7 @@ if (isset($_GET['nowPlaying'])) { //return json nowPlaying details (ajax auto re
   @$out->title=($npd->title!==false ? $npd->title : "----No music is playing----");
   @$out->detail=($npd->detail!==false ? $npd->detail : "");
   $mpc=$fah->getMPCHash();
-  if (time() - $mpc->lastChangeTimestamp > 60) @$out->detail.="<br>!!! Attempting restarts every minute until a stream is started !!!";
+  if ($fah->musicShouldBeRunning && time() - $mpc->lastChangeTimestamp > 60) @$out->detail.="<br>!!! Attempting restarts every minute until a stream is started !!!";
   die(json_encode($out));
 }
 
