@@ -7,8 +7,9 @@ if ($fah->config !== false) {
   if ($fah->checkForRemovedSoundCards() !== false) $fah->updateMPDConfig(); //there is a sound card in mpd that is no longer in the system, remove it from mpd config
   $soundCardName=$fah->getFPPActiveSoundCardName();
 
+  $streamPick=array();
   if ($fah->config->activeSource=='internet') {
-    if (isset($fah->config->streams) && count($fah->config->streams)) {
+    if (isset($fah->config->streams) && count((array)$fah->config->streams)) {
       foreach ($fah->config->streams as $sdata) {
         if ($sdata->active==1)  {
           if ($fah->pingInternetRadio($sdata->url)) $streamPick[$sdata->priority][]=array('url'=>$sdata->url, 'volume'=>$sdata->volume);
@@ -31,7 +32,6 @@ if ($fah->config !== false) {
       }
       else  {
         error_log("fpp-after-hours... ERROR: No reachable streams could be started");
-        $fah->setMusicRunningStatus(false);
       }
     }
   }

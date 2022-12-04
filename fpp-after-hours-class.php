@@ -109,8 +109,9 @@ class fppAfterHours {
     return $out;
   }
   
-  public function checkIsMusicRunning() { //returns mpc command output 
+  public function checkIsMusicRunning($returnHash=false) { //returns mpc command output 
     exec("mpc",$status);
+    if ($returnHash) return md5(implode(",",$status));
     $this->musicIsRunning=false;
     if (count($status)) {
       foreach ($status as $a) {
@@ -232,6 +233,20 @@ class fppAfterHours {
       return $out;
     }
     return false;    
+  }
+
+  public function getMPCHash() {
+    if (!file_exists($this->directories->pluginDataDirectory.'/mpdStatus')) {
+      $md5=$this->checkIsMusicRunning(true); //returns an md5 value of the output of the mpc command
+      $obj=(object)array('lastChangeTimestamp'=>time()-11,'md5'=>$md5);
+      file_put_contents($this->directories->pluginDataDirectory.'/mpdStatus',json_encode($obj));
+    }
+    $obj=json_decode(file_get_contents($this->directories->pluginDataDirectory.'/mpdStatus'));
+    return $obj;
+  }
+
+  public function setMPCHash($obj) {
+    file_put_contents($this->directories->pluginDataDirectory.'/mpdStatus',json_encode($obj));
   }
   
   public function getMPDConfig() {

@@ -2,9 +2,25 @@
 require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
 $fah=new fppAfterHours(false); //do not load ui data now
 
-//only run the functions that we need for this task
-//$fah->checkIsMusicRunning();
-//$fah->checkMusicShouldBeRunning();
+function testForLockedStream() {
+  global $fah;
+  $obj=$fah->getMPCHash();
+  if ($obj) {
+    $md5=$fah->checkIsMusicRunning(true); //returns an md5 value of the output of the mpc command
+    if ($md5 != $obj->md5) {
+      $obj->lastChangeTimestamp=time();
+      $obj->md5=$md5;
+      $fah->setMPCHash($obj);
+    }
+    elseif ($md5 == $obj->md5 && time() - $obj->lastChangeTimestamp >= 10) { //attempt to restart this failed stream
+      exec("mpc stop && mpc clear");
+      $fah->setCurrentInternetRadioHost();
+      if (file_exists($fah->directories->scriptDirectory.'/fpp-after-hours-start.php')) {
+        include $fah->directories->scriptDirectory.'/fpp-after-hours-start.php';
+      }
+    }
+  }
+}
 
 if ($fah->musicShouldBeRunning) {
   if ($fah->musicIsRunning==false)  {
@@ -15,6 +31,7 @@ if ($fah->musicShouldBeRunning) {
       if ($fah->musicIsRunning===false)  {
         if (file_exists($fah->directories->scriptDirectory.'/fpp-after-hours-start.php')) {
           include $fah->directories->scriptDirectory.'/fpp-after-hours-start.php';
+          sleep(1);
         }
       }
       else {
@@ -25,12 +42,14 @@ if ($fah->musicShouldBeRunning) {
             $fah->setCurrentInternetRadioHost();
             if (file_exists($fah->directories->scriptDirectory.'/fpp-after-hours-start.php')) {
               include $fah->directories->scriptDirectory.'/fpp-after-hours-start.php';
+              sleep(1);
             }
           }
         }
       }
     }
   }
+  testForLockedStream();
 }
 else { //should not be running
   exec("mpc stop && mpc clear"); //send kill command just in case
