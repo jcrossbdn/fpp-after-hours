@@ -37,6 +37,16 @@ if (isset($_GET['vdn'])) {
 }
 
 
+// ***************************************************************************************************** D E B U G   L O G S ************************* */
+if (isset($_GET['debugLog'])) {
+  if (file_exists($fah->directories->pluginDataDirectory."fpp-after-hours-debugLog{$_GET['debugLog']}.log")) {
+    echo "<pre>".file_get_contents($fah->directories->pluginDataDirectory."fpp-after-hours-debugLog{$_GET['debugLog']}.log")."</pre>";
+    exit;
+  }
+  die("Could not locate a debug log for {$fah->directories->pluginDataDirectory}fpp-after-hours-debugLog{$_GET['debugLog']}.log");
+}
+
+
 
 // *********************************************************************************************************************************************************************************************************************
 // ********************************************************************************************************* S T A R T    L O C A L    M E D I A *******************************************************************
@@ -195,6 +205,7 @@ if (!$fah->dependenciesAreLoaded) {
   </div>
   <br><br>
   ";
+  echo "If you previously installed this plugin and believe this is related to <a href='https://github.com/jcrossbdn/fpp-after-hours/issues/19' target='_blank'>github issue 19</a> then please <a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&debugLog=19'>click here to view the debug log</a>";
   exit;
 }
 else {    // ************************************************** M A I N    P L U G I N   B O D Y ***************************************************

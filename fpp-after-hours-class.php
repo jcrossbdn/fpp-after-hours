@@ -102,7 +102,14 @@ class fppAfterHours {
   public function checkDependenciesLoaded() {
     exec('mpc version',$ret);
     if (strstr(implode(",",$ret)," version: ")) $this->dependenciesAreLoaded=true;
-    else $this->dependenciesAreLoaded=false;
+    else  {
+      $this->dependenciesAreLoaded=false;
+      exec("mpc",$mpc);
+      exec("mpc version",$mpcVersion);
+      file_put_contents($this->directories->pluginDataDirectory."fpp-after-hours-debugLog19.log","Github Issue: 19\nDate: ".date("Y-m-d H:i:s")."\nmpc output:".print_r($mpc,true)."\nmpc version output:".print_r($mpcVersion,true)."\n---------\n",FILE_APPEND);
+      exec("mpc stop && mpc clear"); //attempt to force mpd off when there is a failure finding mpd in the plugin
+      $this->setMusicRunningStatus(false);
+    }
   }
   public function installDependencies() {
     exec('sudo apt-get -y update && sudo apt-get -y install mpd mpc',$out);
