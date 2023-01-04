@@ -205,7 +205,7 @@ if (!$fah->dependenciesAreLoaded) {
   </div>
   <br><br>
   ";
-  echo "If you previously installed this plugin and believe this is related to <a href='https://github.com/jcrossbdn/fpp-after-hours/issues/19' target='_blank'>github issue 19</a> then please <a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&debugLog=19'>click here to view the debug log</a>";
+  echo "If you previously installed this plugin and believe this is related to <a href='https://github.com/jcrossbdn/fpp-after-hours/issues/19' target='_blank'>github issue 19</a> then please reboot this pi to restore proper operation.";
   exit;
 }
 else {    // ************************************************** M A I N    P L U G I N   B O D Y ***************************************************

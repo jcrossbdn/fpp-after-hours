@@ -104,22 +104,12 @@ class fppAfterHours {
     if (strstr(implode(",",$ret)," version: ")) $this->dependenciesAreLoaded=true;
     else  {
       $this->dependenciesAreLoaded=false;
-
-      /*
-      //Github issue 19 - https://github.com/jcrossbdn/fpp-after-hours/issues/19
-      exec("mpc",$mpc);
+      /*exec("mpc",$mpc);
       exec("mpc version",$mpcVersion);
       file_put_contents($this->directories->pluginDataDirectory."fpp-after-hours-debugLog19.log","Github Issue: 19\nDate: ".date("Y-m-d H:i:s")."\nmpc output:".print_r($mpc,true)."\nmpc version output:".print_r($mpcVersion,true)."\n---------\n",FILE_APPEND);
       exec("mpc stop && mpc clear"); //attempt to force mpd off when there is a failure finding mpd in the plugin
       */
-      if (file_exists($this->directories->pluginDataDirectory."fpp-after-hours-debugLog19.log")) unlink($this->directories->pluginDataDirectory."fpp-after-hours-debugLog19.log");
-      exec('sudo systemctl stop mpd');
-      exec('sudo systemctl start mpd');
-      exec('mpc version',$ret);
-      if (strstr(implode(",",$ret)," version: ")) $this->dependenciesAreLoaded=true;
-      // ** END Github issue 19
-
-      //$this->setMusicRunningStatus(false);
+      $this->setMusicRunningStatus(false);
     }
   }
   public function installDependencies() {
@@ -394,7 +384,7 @@ class fppAfterHours {
           $audio_output="";
           foreach ($sysCards as $cardNo=>$data1) {
             $type="alsa";
-            $audio_output.="audio_output {\n\ttype\t\"$type\"\n\tname\t\"$data1->cardName\"\n\tdevice\t\"hw:$cardNo,0\"\n\tmixer_type\t\"software\"\n\tformat\t\"44100:16:2\"\n\tbitrate\t\"128\"\n}\n";
+            $audio_output.="audio_output {\n\ttype\t\"$type\"\n\tname\t\"$data1->cardName\"\n\tdevice\t\"hw:$cardNo,0\"\n\tmixer_type\t\"software\"\n\tformat\t\"44100:16:2\"\n\tbitrate\t\"128\"\n\tbuffer_time\t\"200000\"\n\tperiod_time\t\"5084\"\n}\n";
           }
           $mpdConfig=$this->getMPDConfig();
           if ($mpdConfig===false) return false;
@@ -405,7 +395,7 @@ class fppAfterHours {
             exec("yes | sudo cp -rf {$this->directories->pluginDataDirectory}fpp-after-hours-mpdConfig /etc/mpd.conf");
             unlink("{$this->directories->pluginDataDirectory}fpp-after-hours-mpdConfig");
 	          if (!$forceUpdate) {  
-	            exec("sudo mpd --kill");
+							exec("sudo mpd --kill");
 	            sleep(3);
 	            exec("sudo mpd");
 	            sleep(3);
