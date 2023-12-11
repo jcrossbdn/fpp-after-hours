@@ -48,8 +48,9 @@ class fppAfterHours {
       if (isset($this->config->local) && count($this->config->local)) $this->config->activeSource='local';
       else $this->config->activeSource='internet'; //default to this
     }
-    file_put_contents($this->directories->pluginDataDirectory.$this->pluginName."-config.history", date("Y-m-d H:i:s")." - ".json_encode($this->config)."\n",FILE_APPEND); //write all changes to history file in case of booboo
+    if (!file_put_contents($this->directories->pluginDataDirectory.$this->pluginName."-config.history", date("Y-m-d H:i:s")." - ".json_encode($this->config)."\n",FILE_APPEND)) error_log("fpp-after-hours could not write history data to {$this->directories->pluginDataDirectory}{$this->pluginName}-config.history"); //write all changes to history file in case of booboo
     if (file_put_contents($this->directories->pluginDataDirectory.$this->pluginName."-config.json", json_encode($this->config))) return true;
+    error_log("fpp-after-hours could not write current data to {$this->directories->pluginDataDirectory}{$this->pluginName}-config.json");
     return false;
   }
  

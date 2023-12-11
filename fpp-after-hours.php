@@ -69,9 +69,9 @@ if (isset($_POST['fah-submitInternet']) || isset($_POST['fah-deleteStream'])) {
   if (trim($_POST['fah-newStreamName']) != '' && trim($_POST['fah-newStreamURL']) != '') {
     $name=trim($_POST['fah-newStreamName']);
     $url=trim($_POST['fah-newStreamURL']);
-    @$fah->config->streams->$name=(object)array('url'=>$url, 'active'=>1, 'priority'=>9, 'volume'=>'-');
+    @$fah->config->streams->$name=(object)array('url'=>$url, 'active'=>1, 'priority'=>9, 'volume'=>'100');
   }
-
+  
   //update an existing stream
   if (isset($_POST['priority'])) { //only update if there is at least 1 existing item posted
     foreach ($_POST['priority'] as $streamName=>$null) {
@@ -93,6 +93,14 @@ if (isset($_POST['fah-submitInternet']) || isset($_POST['fah-deleteStream'])) {
       }      
     }
   }
+  
+  //remove any stream entries that don't have names (identified in https://github.com/jcrossbdn/fpp-after-hours/issues/22)
+  if (isset($fah->config->streams) && count($fah->config->streams)) {
+    foreach ($fah->config->streams as $streamName=>$null) {
+      if (trim($streamName)=='') unset($fah->config->streams->{$streamName});
+    }
+  }
+  
   $fah->saveConfigFile();
 }
 
