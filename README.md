@@ -3,7 +3,6 @@
 This plugin allows you to configure music sources for playback typically outside of show hours
 
 ### Known limitations / Gotchas
-  - There is a known bug with fpp 2.5 that prevents scripts from running from playlists. You must switch to the master branch to use scripts (see https://falconchristmas.com/forum/index.php?topic=10032.0 for details)
   - You must add at least a 1 second pause entry in the playlist after the fpp-after-hours-stop.php script is called (failure to do this could cause your show to halt especially if using a USB sound card).
   
 ### Getting Started
@@ -13,11 +12,14 @@ This plugin allows you to configure music sources for playback typically outside
    - (or for advanced users) from the command line type: sudo git clone git://github.com/jcrossbdn/fpp-after-hours /home/fpp/media/plugins/fpp-after-hours
 3. Navigate to the "Content Setup" menu in the Falcon Player User Interface and then the "After Hours Music" option. If you dont see this option then refresh your browser window.
 4. You will then be presented with the After Hours plugin home page.
-5. You will likely see only a screen that says "Additional Software Must Be Installed". Click the "Install now" button to install Media Player Daemon (mpd) and a control interface called mpc.  The after hours music plugin uses these applications to play music and are not optional. 
+5. You will likely see only a screen that says "Additional Software Must Be Installed". Click the "Install now" button to install Media Player Daemon (mpd) and a control interface called mpc.  The after hours music plugin uses these applications to play music and are not optional. This installation can take a long time, don't leave your browser window until the page loading indicator has completed on your browser.  If you left the page early or clicked out of it you will have to install the dependencies manually from the command line.
 
 ![first page](install-dependencies.jpg)
 
 6. Once installation of mpd and mpc has completed you will be presented with a confirmation screen.  Click "Click here to return to after hours plugin page".
+
+### After an OS Upgrade
+You will have to reinstall all the dependencies, however, all your configurations should have been restored after the upgrade.  This installation can take a long time, don't leave your browser window until the page loading indicator has completed on your browser.  If you left the page early or clicked out of it you will have to install the dependencies manually from the command line.
 
 ### Navigation
 ![home page](post_entering_first_stream.jpg)
