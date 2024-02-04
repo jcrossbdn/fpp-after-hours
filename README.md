@@ -1,3 +1,5 @@
+# FPP After Hours is currently being updated to work on FPP v8 and will be updated here once it is complete.  In addition to updating the code so it will work on V8 I am also updating the user interface. - Jason 2024-02-03
+
 # FPP After Hours Music Manager
 
 This plugin allows you to configure music sources for playback typically outside of show hours
