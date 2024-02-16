@@ -126,6 +126,11 @@ function fah_getStreams() {
         foreach ($fah->config['streams'] as $streamName=>$streamData) {
             $streams[$streamData['priority']]=$streamData;
             $streams[$streamData['priority']]['streamName']=$streamName;
+
+            if (is_numeric($streamData['active'])) $streams[$streamData['priority']]['active']=($streamData['active']==1 ? true : false); //handle old configs with integers for active states
+            else if ($streamData['active']=='true') $streams[$streamData['priority']]['active']=true; //handle string to bool conversion
+            else $streams[$streamData['priority']]['active']=false;
+
             if (!isset($_GET['noPing']) || (isset($_GET['noPing']) && $_GET['noPing']=='false')) $streams[$streamData['priority']]['ping']=($fah->pingInternetRadio($streamData['url'])===true ? true:false);
         }
         return json(array('status'=>true, 'count'=>count($streams), 'data'=>$streams));
@@ -159,7 +164,7 @@ function fah_stop() {
     return json(array('status'=>true));
 }
 
-// GET /api/plugin/fpp-after-hours/getNowPlaying[?titleOnly=true/false]
+// GET /api/plugin/fpp-after-hours/getDetails[?titleOnly=true/false]
 function fah_getDetails() {
     $fah=new fppAfterHours();
     $npd=$fah->getNowPlayingDetail();

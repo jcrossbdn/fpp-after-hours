@@ -73,20 +73,30 @@ File1=http://192.111.140.11:8576/listen.pls?sid=1
 copy the http://192.111.140.11:8567 (ignore the ending slash and text) and that is your stream URL that you can paste into the after hours plugin page.
 
 ### Using this plugin in conjunction with your show playlist
-1. Once the plugin is configured you will see two scripts presented in the fpp File Manager in the Scripts tab, one called fpp-after-hours-start.php and the other called fpp-after-hours-stop.php.
+Once the plugin is configured you will see there are two commands presented as "FPP Commands" in the playlist editor called "FPP After Hours Plugin - Start" and "FPP After Hours Plugin - Stop".
 
-### Start and stop after hours using fpp playlist and schedule settings
-![sample playlist](samplePlaylist.jpg)
 1. To start and stop the after hours radio station go to the desired playlist (Content Setup / Playlists / click the desired playlist).
-2. You can then add a new playlist entry, choose type: Script
-3. Choose the Script named fpp-after-hours-start.php and click add
-4. Choose the Script named fpp-after-hours-stop.php and click add
-5. **It is highly recommended that you also add a type: Pause for 1 second (failure to do so could cause your show to not start properly especially if using a USB sound card)
-6. Drag and drop the fpp-after-hours-stop.php script right under the grey "Lead In" row
-7. Drag and drop the PAUSE-1 right under the fpp-after-hours-stop.php row **IMPORTANT
-8. Drag and drop the fpp-after-hours-start.php script right under the grey "Lead Out" row
-9. Click Save
-10. The after hours radio station will now start when your show ends and stop when your show is about to start (show volume is saved when fpp-after-hours-start.php is run and restored when fpp-after-hours-stop.php is run)
+2. You can then click "Add a Sequence/Entry"
+    - Choose type: FPP Command
+    - Choose Command: FPP After Hours Plugin - Start
+      - If you want the plugin to fade in the music enter the number of seconds you want the fade to happen over (or 0 to not fade)
+      - If you want to fade you can also set the starting volume of the fade as most audio you cant hear until 30-50 percent.
+    - Click "Add"
+3. Click "Add a Sequence/Entry" again
+    - Choose type: FPP Command
+    - Choose Command: FPP After Hours Plugin - Stop
+      - If you want the plugin to fade out the music enter the number of seconds you want the fade to happen over (or 0 to not fade)
+      - If you want to fade you can also set the ending volume of the fade as most audio you cant hear below 30-50 percent.
+    - Click "Add"
+4. **It is highly recommended that you also add a type: Pause for 1 second (failure to do so could cause your show to not start properly especially if using a USB sound card)
+5. Drag and drop the "FPP After Hours Plugin - Stop" command into the "Lead In" section
+6. Drag and drop the PAUSE right under the "FPP After Hours Plugin- Stop" command **IMPORTANT**
+7. Drag and drop the "FPP After Hours Plugin - Start" command into the "Lead Out" section
+8. Click Save Playlist
+9. The after hours radio station will now start when your show ends and stop when your show is about to start
+
+![sample playlist](samplePlaylist.jpg)
+
 
 ### Why do I need a pause if using a USB sound card
 With the USB sound card I have tested only one program can use the sound card at the same time. This pause ensures that the stop script has enough time to actually stop playing before fpp tries to start your playlist. If fpp tries to play music before after-hours has released fpp will error out and wait. It is best practice with this plugin to add a 1 second pause all the time.
@@ -107,6 +117,117 @@ All fpp-after-hours functions from the user interface are now handled by the fpp
 
 ***
 
+#### **Get stream and fpp-after-hours current details**
+
+**GET** /api/plugin/fpp-after-hours/getDetails[?titleOnly]
+- titleOnly (optional)
+  - true = only return the title (returns HTTP 200: {status:true, data:"Stream Title"})
+  - false = returns pertinant details to what fpp-after-hours is doing
+- Returns 
+  - When titleOnly is true: HTTP 200: {status:true, data:"Stream Title"}
+  - When titleOnly is omitted or false:
+    - HTTP 200: <pre>{
+status: true, 
+data:{
+  &nbsp;&nbsp;title: string, (title of the currently running stream or "----No music is playing----" if there is no active stream)
+  &nbsp;&nbsp;detail: string, (information from the player, can include volume and any errors)
+  &nbsp;&nbsp;musicIsRunning: bool, (is music currently running in the MPD player)
+  &nbsp;&nbsp;musicShouldBeRunning: bool, (is fpp-after-hours currently supposed to be playing music)
+  &nbsp;&nbsp;dependenciesAreLoaded: bool, (is the MPD and MPC applications installed on this computer)
+  &nbsp;&nbsp;mpdVolume: string (what is the current volume returned by the MPD player)
+  &nbsp;&nbsp;}
+}</pre>
+
+***
+
+#### **Get Streams**
+**GET** /api/plugin/fpp-after-hours/getStreams[?noPing]
+- noPing *(optional)*
+  - true = do not attempt to ping stream endpoints during scan (faster response)
+  - false *default = ping stream endpoints during scan
+- Returns:
+  - Streams Present (HTTP 200): <pre>{
+status: true, 
+count: int, (number of streams in data array)
+data:{
+  &nbsp;&nbsp;x: {  (keyed on priority 1-999999)
+      &nbsp;&nbsp;&nbsp;&nbsp;active: bool, (true or false)
+      &nbsp;&nbsp;&nbsp;&nbsp;url: string, (full url of the stream as a string)
+      &nbsp;&nbsp;&nbsp;&nbsp;volume: int, (volume percentage as integer between 0 and 100)
+      &nbsp;&nbsp;&nbsp;&nbsp;priority: int, (the order as an integer in which this stream should be displayed and used)
+      &nbsp;&nbsp;&nbsp;&nbsp;uid: int, (the unique id as an integer of the stream)
+      &nbsp;&nbsp;&nbsp;&nbsp;streamName: string (a descriptive name of the stream as a string)
+      &nbsp;&nbsp;&nbsp;&nbsp;}
+  &nbsp;&nbsp;}
+}</pre>
+  - No Streams Present (HTTP 200): {status:true, count:0, data:[]}
+
+***
+
+#### **Get Stream Availability**
+Tests the url for successful connection.  Does not actually make sure the endpoint is a valid stream
+
+**GET** /api/plugin/fpp-after-hours/getStreamPing?uid
+- uid (required)
+  - uid is found in the fpp-after-hours-config.json file or the getStreams API endpoint
+- Returns:
+  - Stream endpoint was reached (HTTP 200): {status:true}
+  - Stream endpoint was tested but could not be reached (HTTP 200): {status:false}
+  - Error (HTTP 200): {status:false, data:"The error message"}
+
+***
+
+#### **Start the first available stream**
+
+**GET** /api/plugin/fpp-after-hours/start
+- Returns HTTP 200: {status:true}
+
+***
+
+#### **Stop the currently playing stream**
+
+**GET** /api/plugin/fpp-after-hours/stop
+- Returns HTTP 200: {status:true}
+
+***
+
+
+#### **Set MPD Volume**
+Will only change the volume of the MPD player and only works when MPD is playing (fpp-after-hours is in control of the audio)
+
+**GET** /api/plugin/fpp-after-hours/setMPDvolume?value
+- value (required)
+  - can be a volume percentage between 0 and 100 as integer
+  - can specify an increase of x percent by prepending an "a"  (e.g. to increase 10% send ?value=a10)
+  - can specify a decrease of x percent by prepending an "s" (e.g. to decrease 10% send ?value=s10)
+- Returns HTTP 200: {status:true, data:"the new volume returned by MPD"}
+
+***
+
+#### **Update Stream**
+**POST** /api/plugin/fpp-after-hours/updateStream
+- priority[*order (zero indexed)*][*uid*]
+  - should be posted as such [{0:first uid},{1:second uid},{2:third uid}]
+  - priority must contain all streams with their order in the tree.  There is no error checking for mismatches or duplicates
+  - is not required to be provided for an update of other values or for a new entry
+- uid *(required except for calls only for priority updates)*
+  - to create a new stream entry pass a 0 to uid
+- name *(required except for calls only for priority updates)*
+  - a string value describing the stream
+- url *(required except for calls only for priority updates)*
+  - a valid url to an internet stream endpoint
+- active *(optional)*
+  - true *default
+  - false
+- volume *(optional)*
+  - an integer between 0 and 100
+    - *100 is default
+- Returns:
+  - Successful (HTTP 200): {status:true}
+  - Error (HTTP 200): {status:false}
+
+***
+
 #### **Delete Stream**
 **GET** /api/plugin/fpp-after-hours/deleteStream?deleteStream=*&lt;uid of stream&gt;*
 - deleteStream is required
@@ -117,48 +238,21 @@ All fpp-after-hours functions from the user interface are now handled by the fpp
 
 ***
 
-#### **Update Stream**
-**POST** /api/plugin/fpp-after-hours/updateStream
-- priority[*order (zero indexed)*][*uid*]
-  - should be posted as such [{0:first uid},{1:second uid},{2:third uid}]
-  - priority must contain all streams with their order in the tree.  There is no error checking for mismatches or duplicates
-- uid *(required except for calls only for priority updates)*
-  - to create a new stream entry pass a 0 to uid
-- name *(required except for calls only for priority updates)*
-  - a string value describing the stream
-- url *(required except for calls only for priority updates)*
-  - a valid url to an internet stream endpoint
-- active *(optional)*
-  - 1 = true *default
-  - 0 = false
-- volume *(optional)*
-  - an integer between 0 and 100
-    - *100 is default
+#### **Update Scripts**
+Will check all scripts and crontab entries and update them if there are any changes
+
+**GET** /api/plugin/fpp-after-hours/updateScripts
+- Returns
+  - Successful HTTP 200: {status:true}
+  - Any Error HTTP 200: {status:false, data:{"error 1","error2","error3"}}
 
 ***
 
-#### **Get Streams**
-**GET** /api/plugin/fpp-after-hours/getStreams[?noPing]
-- noPing *(optional)*
-  - true = do not attempt to ping stream endpoints during scan (faster response)
-  - false *default = ping stream endpoints during scan
+#### **Install Dependencies**
+Will run the linux command "sudo apt update && sudo apt -y install mpd mpc"
 
-
-
-// GET /api/plugin/fpp-after-hours/getStreamPing?uid=x
-
-// GET /api/plugin/fpp-after-hours/start
-
-// GET /api/plugin/fpp-after-hours/stop
-
-// GET /api/plugin/fpp-after-hours/getNowPlaying[?titleOnly=true/false]
-
-// GET /api/plugin/fpp-after-hours/setMPDvolume?value=x
-//      value a10 to increase by 10%, s10 to decrease by 10%, 50 to set to 50%
-// *only changes the volume of the MPD player and only works when fpp-after-hours is in control of the audio
-
-// GET /api/plugin/fpp-after-hours/updateScripts
-
-// GET /api/plugin/fpp-after-hours/installDependencies[?stream=true/false]
-//  *stream=true - returns a stream response instead of a typical api response (designed for use in the gui modal for live updates)
-
+**GET** /api/plugin/fpp-after-hours/installDependencies[?stream]
+- stream (optional)
+  - true *default (will run the command in such a way that its output can be streamed to the user interface live)
+  - false (will run the command and return once completed)
+- Returns HTTP 200: {status:true}

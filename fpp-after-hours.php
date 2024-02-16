@@ -116,7 +116,7 @@ echo <<<EOF
                     <input type='hidden' id='prio_` + item.uid + `' value='` + item.priority + `'>
                   </td>
                   <td>
-                    <input class='streamData' type='checkbox' id='active_` + item.uid + `' uid='` + item.uid + `' style='cursor:pointer;' onclick='saveStreamData($(this))' name='stream_active'` + (item.active=='1' ? " checked" : "") + `>
+                    <input class='streamData' type='checkbox' id='active_` + item.uid + `' uid='` + item.uid + `' style='cursor:pointer;' onclick='saveStreamData($(this))' name='stream_active'` + (item.active==true ? " checked" : "") + `>
                   </td>
                   <td>
                     <i id='fah_streamError_` + item.uid + `' class='fas fa-exclamation-triangle redIcon d-none' alt='Stream URL not respoding'></i>
@@ -182,7 +182,7 @@ echo <<<EOF
     if (thiss != 0) { //pull original form data for editing from the underlaying dom
       uid=thiss.attr('uid');
       //priority=$("#prio_"+uid).val();
-      active=($("#active_"+uid).prop('checked') ? 1 : 0);
+      active=($("#active_"+uid).prop('checked') ? true : false);
       name=$("#streamName_"+uid).val();
       url=$("#url_"+uid).val();
       volume=$("#volume_"+uid).val();
@@ -190,7 +190,7 @@ echo <<<EOF
     }
     else {
       uid=0;
-      active=1;
+      active=true;
       name="";
       url="";
       volume=100;
@@ -201,7 +201,7 @@ echo <<<EOF
       id: "fahAddEditStream",
       title: title,
       body: `
-        <input type='checkbox' id='Eactive' style='cursor:pointer;' ` + (active=='1' ? " checked" : "") + `> Active
+        <input type='checkbox' id='Eactive' style='cursor:pointer;' ` + (active==true ? " checked" : "") + `> Active
         <br><br>
         Stream Name<br>
         <input type='text' style="width:100%" id='EstreamName' value='` + name + `'></input>
@@ -240,7 +240,7 @@ echo <<<EOF
           id: 'fahDependsCloseDialogButton',
           click: function() {
             postData={uid:uid};
-            postData.active=($("#Eactive").prop('checked') ? 1 : 0);
+            postData.active=($("#Eactive").prop('checked') ? true : false);
             postData.name=$("#EstreamName").val();
             postData.url=$("#Eurl").val();
             postData.volume=$("#Evolume").val();
@@ -277,7 +277,7 @@ echo <<<EOF
           id: 'fahDependsCloseDialogButton',
           click: function() {
             postData={uid:uid};
-            postData.active=($("#Eactive").prop('checked') ? 1 : 0);
+            postData.active=($("#Eactive").prop('checked') ? true : false);
             postData.name=$("#EstreamName").val();
             postData.url=$("#Eurl").val();
             postData.volume=$("#Evolume").val();
@@ -336,7 +336,7 @@ echo <<<EOF
     postData={uid:thiss.attr('uid')};
     switch (thiss.attr('name')) {
       case 'stream_active':
-        postData.active=(thiss.prop('checked') ? 1 : 0); break;
+        postData.active=(thiss.prop('checked') ? true : false); break;
       case 'stream_name':
         postData.name=(thiss.val()); break;
       case 'stream_URL':

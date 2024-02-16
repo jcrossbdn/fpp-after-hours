@@ -41,6 +41,7 @@ class fppAfterHours {
     $this->refreshCronOkayFlag();
     $this->refreshScriptsOkayFlag();
     $this->checkForMPDFormat(); //do this only so we don't have to update startup script to perform the format and bitrate mpd.conf update - 2019-11-06
+    $this->checkMakeScriptsExecutable();
   }
 
   private function databaseOpen($write=false) {
@@ -120,7 +121,6 @@ class fppAfterHours {
     
     //upgrade volume in streams config since new version does not use the show volume setting from fpp
     if (isset($this->config['streams'])) {
-    	
       foreach ($this->config['streams'] as $key=>$data) {
         if ($data['volume']=="-") {
 					$this->config['streams'][$key]['volume']=100;
@@ -508,6 +508,15 @@ class fppAfterHours {
     return false;
   }
   
+  public function checkMakeScriptsExecutable() {
+    $fileList=array("commands/fpp-after-hours-start.php","commands/fpp-after-hours-stop.php","scripts/fpp_uninstall.sh");
+    foreach ($fileList as $f) {
+      if (!is_executable($this->directories['pluginDirectory'].$f)) {
+        exec("sudo chmod +x ".$this->directories['pluginDirectory'].$f);
+      }
+    }
+  }
+
   public function checkGitUpdates() {
     exec("cd /home/fpp/media/plugins/fpp-after-hours && sudo git fetch --all && sudo git checkout",$ret);
     return $ret;

@@ -1,0 +1,46 @@
+[
+    {
+      "name": "FPP After Hours Plugin - Start",
+      "script": "fpp-after-hours-start.php",
+      "args": [
+        {
+            "name": "fadeInSeconds",
+            "type": "string",
+            "description": "Fade in over (seconds)",
+            "optional": true,
+            "default":"0",
+            "tip": "Allows stream to be faded in over a number of seconds (set to 0 to not fade)"
+        },
+        {
+            "name": "startFadePercent",
+            "type": "string",
+            "description": "Start fade in at (percent)",
+            "optional": true,
+            "default":"30",
+            "tip": "Will set volume initially to this value and then will increase to max value defined in fpp-after-hours plugin over the number of seconds above"
+        }
+      ]
+    },
+    {
+      "name": "FPP After Hours Plugin - Stop",
+      "script": "fpp-after-hours-stop.php",
+      "args": [
+        {
+            "name": "fadeOutSeconds",
+            "type": "string",
+            "description": "Fade out over (seconds)",
+            "optional": true,
+            "default":"0",
+            "tip": "Allows stream to be faded out over a number of seconds (set to 0 to not fade)"
+        },
+        {
+            "name": "stopFadePercent",
+            "type": "string",
+            "description": "Stop fade out at (percent)",
+            "optional": true,
+            "default":"30",
+            "tip": "Will decrease the voume until it hits this percentage over the number of seconds above"
+        }
+      ]
+    }
+]
