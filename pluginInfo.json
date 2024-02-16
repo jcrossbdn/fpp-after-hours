@@ -6,12 +6,24 @@
     "homeURL": "https://github.com/jcrossbdn/fpp-after-hours",
     "srcURL": "https://github.com/jcrossbdn/fpp-after-hours.git",
     "bugURL": "https://github.com/jcrossbdn/fpp-after-hours/issues",
+    "allowUpdates": 1,
     "versions": [
         {
             "minFPPVersion": "3.0",
+            "maxFPPVersion": "6.3",
+            "branch": "preV7",
+            "sha": "",
+            "dependencies": {
+                "packages": [
+                    "mpd",
+                    "mpc"
+                ]
+            }
+        },
+        {
+            "minFPPVersion": "7.0",
             "maxFPPVersion": "0",
             "branch": "master",
-            "allowUpdates": 1,
             "sha": "",
             "dependencies": {
                 "packages": [

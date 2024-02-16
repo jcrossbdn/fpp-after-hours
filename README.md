@@ -1,5 +1,3 @@
-# FPP After Hours is currently being updated to work on FPP v8 and will be updated here once it is complete.  In addition to updating the code so it will work on V8 I am also updating the user interface. - Jason 2024-02-03
-
 # FPP After Hours Music Manager
 
 This plugin allows you to configure music sources for playback typically outside of show hours
@@ -9,56 +7,58 @@ This plugin allows you to configure music sources for playback typically outside
   
 ### Getting Started
 1. Get sound working through fpp (ensure proper sound card is selected, go to Status/Control and then Status Page and click volume + and then volume - once (this ensures the volume is set to match fpp as there are sometimes inconsistencies)
-2. Install the plugin
-   - from the fpp user interface, Content Setup / Plugins, click on the down arrow beside FPP After Hours
-   - (or for advanced users) from the command line type: sudo git clone git://github.com/jcrossbdn/fpp-after-hours /home/fpp/media/plugins/fpp-after-hours
+2. Install the plugin (you must be connected to the internet and have DNS properly configured to do this without errors)
+   - from the fpp user interface, Content Setup / Plugin Manager, click on the install button beside the After Hours Music Player Plugin
 3. Navigate to the "Content Setup" menu in the Falcon Player User Interface and then the "After Hours Music" option. If you dont see this option then refresh your browser window.
 4. You will then be presented with the After Hours plugin home page.
-5. You will likely see only a screen that says "Additional Software Must Be Installed". Click the "Install now" button to install Media Player Daemon (mpd) and a control interface called mpc.  The after hours music plugin uses these applications to play music and are not optional. This installation can take a long time, don't leave your browser window until the page loading indicator has completed on your browser.  If you left the page early or clicked out of it you will have to install the dependencies manually from the command line.
+5. You will likely see only a screen that says "Additional Software Must Be Installed". Click the "Install" button to install Media Player Daemon (mpd) and a control interface called mpc.  The after hours music plugin uses these applications to play music and are not optional. This installation can take a long time, don't leave your browser window until the page loading indicator has completed on your browser.  If you refresh or close your browser window before it completes you will have to install the dependencies manually from the command line.  The command is *sudo apt update && sudo apt -y install mpd mpc*
 
 ![first page](install-dependencies.jpg)
 
 6. Once installation of mpd and mpc has completed you will be presented with a confirmation screen.  Click "Click here to return to after hours plugin page".
 
+![first page confirm](install-dependencies-complete.jpg)
+
 ### After an OS Upgrade
 You will have to reinstall all the dependencies, however, all your configurations should have been restored after the upgrade.  This installation can take a long time, don't leave your browser window until the page loading indicator has completed on your browser.  If you left the page early or clicked out of it you will have to install the dependencies manually from the command line.
 
+Configuration files are located in /home/fpp/media/plugindata and will be backed up by fpp if you choose Backup Area "Plugin Settings" when doing an FPP Backup from the "Status/Control" menu.
+
 ### Navigation
 ![home page](post_entering_first_stream.jpg)
-The plugin page is separated into a few sections (some sections will only be visible after music is configured:
-- Now playing shows the current stream information including volume and title if provided by the radio station
-- Control allows you to test the scripts (this runs the same scripts that are saved in the fpp scripts directory) and adjust the volume in real time (if music is currently running the original show volume will be displayed)
-- Music Configuration
-  - Local Media Tab - not available at this time
-  - Internet Radio Tab - allows you to save internet radio station streams and make them available to be run, set priority and volume as well as see if the server responds to pings.
-  - Advanced - Show different useful pieces of information or debugging information (work in progress)
 
+This plugin is currently only setup to handle internet audio streams.  Local music is on the roadmap but has not been completed yet.
+
+The page is separated into a few sections
+- Now playing shows the current stream information including volume and title if provided by the radio station
+- The control section allows you to run the play and stop scripts (this runs the same scripts that are saved in the fpp scripts directory) and adjust the volume in real time (if music is currently running the original show volume will be displayed)
+- Stream Managment where you can create edit and delete streams.
+  - On larger screens the stream name, url and volume are editable by clicking the text or you may click the edit icon
+  - On smaller screens only the stream name will be visible but you may click the stream name to view and edit all options
+  - The order in which streams should be attempted is controlled by dragging and dropping (from the order column) the item to whatever position you want it in.
+  
 ### Adding a new Internet Radio Stream
-1. At the bottom of the page there are two textboxes.  Enter the name or description you want in the Name field and add the URL of the stream in the URL field (see below for how to find the URL)
-2. Click Save
+1. Click the Add Stream button just below the controls section.  Enter the name or description you want in the Name field and add the URL of the stream in the URL field (see below for how to find the URL)
+2. Click Create
 
 ### Testing an Internet Radio Stream
 1. To test a stream you must make it Active by checking off the Active checkbox beside the desired stream
-2. Then you can either set the priority to a lower number than all the other active streams or make all other streams Inactive by unchecking their Active checkboxes
-3. Hit Save if you have made any changes above (this page does not auto-save)
-4. Ensure that the status column shows "Reachable" for the stream.  If the fpp cannot communicate with a radio station it will show "Unreachable".
-5. Click "Run Start Script" and the stream should start playing throught the system.
-6. Use the "Volume +" or "Volume -" links to adjust the current volume to the desired level. Once you have the volume you want you can enter it into the volume textbox for that stream (without the % sign). Hit save once you have done this. If the volume is fine you can enter a hyphen "-" into the volume textbox.
-7. Click "Run Stop Script" to stop the stream.  The volume will be automatically reverted to the "show volume" (the volume that the fpp was at before running the Start Script).
+2. Then you can move the entry to the top of the list or make all other streams Inactive by unchecking their Active checkboxes
+3. If there is an error reaching the url an alert icon will appear above the streams name.  This check does not ensure the url actually plays music, just that it is reachable.4. Click "Start" and the stream should start playing through the system.
+5. Use the Volume slider to adjust the current volume to the desired level. Once you have the volume you want you can enter it into the volume setting for that stream and it will be used on future plays.
+6. Click Stop to stop the stream.  The systems volume will be automatically reverted to the "show volume" (the volume that the fpp was at before running the Start Script).
 
 ### Internet Radio Station selection order and priority
 1. The Start Script will first look at all saved radio stations you have
 2. It will then determine which ones are in an active state
 3. It will then ping the server to see if it is online
-4. It will then order the streams by priority (lowest to highest)
-5. If multiple streams have the same priority then one will be randomly selected
-6. The selected stream will be started
-7. The current volume will be saved as "Show Volume" and the fpp volume will be adjusted if you have a value in the volume column for that station.
+4. It will then look at the order you have them in on the user interface
+5. The first available stream will be started
+6. The current volume will be saved as "Show Volume" and the fpp volume will be adjusted if you have a value in the volume column for that station.
 
 ### How does volume work
-When the Run Start Script button or fpp-after-hours-start.php script is executed the script will capture the current volume of the system and save it to a file.  
-When the Run Stop Script button or fpp-after-hours-stop.php script is executed the script will reset the pi volume to the volume level previously captured.  
-Volume + and - buttons will not be clickable if there is currently no stream playing (to prevent you from monkeying up your show volume level)
+- When the Start button is pressed or the fpp-after-hours-start.php script is executed the script will capture the current volume of the system and save it to a file.  
+- When the Stop button is pressed or the fpp-after-hours-stop.php script is executed the script will reset the systems volume to the volume level previously captured.  
 
 ### Finding the URL of your favorite internet radio station
 There are several internet radio streams available and you just have to find something that can be played by the "mpc" player.  I have found that some .m3u links don't work but most .pls streams seem to (I have not explored why).
@@ -101,3 +101,64 @@ A- The plugin will automatically detect new sound cards and configure mpd to use
 - a file is copied to cron.d to test for failed music. This cron will restart the playlist if problems are detected as long as the music is supposed to be operating
 - mpd is configured with all known sound cards, the currently selected fpp sound card is forced on during mpd playback
 - there is an uninstall script in the plugin directory that will unload cron, remove mpd & mpc, and remove plugin-data files used by this plugin. The main config file will not be deleted and is found in the plugindata directory.
+
+### API
+All fpp-after-hours functions from the user interface are now handled by the fpp-after-hours API which is exposed on the computer running the fpp-after-hours plugin.  The API endpoints are as follows:
+
+***
+
+#### **Delete Stream**
+**GET** /api/plugin/fpp-after-hours/deleteStream?deleteStream=*&lt;uid of stream&gt;*
+- deleteStream is required
+  - uid is found in the fpp-after-hours-config.json file or the getStreams API endpoint
+- Returns:
+  - Successful (HTTP 200): {status:true}
+  - Error (HTTP 200): {status:false, data:"The error message"}
+
+***
+
+#### **Update Stream**
+**POST** /api/plugin/fpp-after-hours/updateStream
+- priority[*order (zero indexed)*][*uid*]
+  - should be posted as such [{0:first uid},{1:second uid},{2:third uid}]
+  - priority must contain all streams with their order in the tree.  There is no error checking for mismatches or duplicates
+- uid *(required except for calls only for priority updates)*
+  - to create a new stream entry pass a 0 to uid
+- name *(required except for calls only for priority updates)*
+  - a string value describing the stream
+- url *(required except for calls only for priority updates)*
+  - a valid url to an internet stream endpoint
+- active *(optional)*
+  - 1 = true *default
+  - 0 = false
+- volume *(optional)*
+  - an integer between 0 and 100
+    - *100 is default
+
+***
+
+#### **Get Streams**
+**GET** /api/plugin/fpp-after-hours/getStreams[?noPing]
+- noPing *(optional)*
+  - true = do not attempt to ping stream endpoints during scan (faster response)
+  - false *default = ping stream endpoints during scan
+
+
+
+// GET /api/plugin/fpp-after-hours/getStreamPing?uid=x
+
+// GET /api/plugin/fpp-after-hours/start
+
+// GET /api/plugin/fpp-after-hours/stop
+
+// GET /api/plugin/fpp-after-hours/getNowPlaying[?titleOnly=true/false]
+
+// GET /api/plugin/fpp-after-hours/setMPDvolume?value=x
+//      value a10 to increase by 10%, s10 to decrease by 10%, 50 to set to 50%
+// *only changes the volume of the MPD player and only works when fpp-after-hours is in control of the audio
+
+// GET /api/plugin/fpp-after-hours/updateScripts
+
+// GET /api/plugin/fpp-after-hours/installDependencies[?stream=true/false]
+//  *stream=true - returns a stream response instead of a typical api response (designed for use in the gui modal for live updates)
+

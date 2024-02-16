@@ -1,6 +1,7 @@
 <?php
 require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
 $fah=new fppAfterHours(false); //do not load ui data now
+$runFromCronMonitorStream=true;
 
 function testForLockedStream() {
   global $fah;
@@ -15,8 +16,8 @@ function testForLockedStream() {
     elseif ($md5 == $obj->md5 && time() - $obj->lastChangeTimestamp >= 10) { //attempt to restart this failed stream
       exec("mpc stop && mpc clear");
       $fah->setCurrentInternetRadioHost();
-      if (file_exists($fah->directories->scriptDirectory.'/fpp-after-hours-start.php')) {
-        include $fah->directories->scriptDirectory.'/fpp-after-hours-start.php';
+      if (file_exists($fah->directories['scriptDirectory'].'/fpp-after-hours-start.php')) {
+        include $fah->directories['scriptDirectory'].'/fpp-after-hours-start.php';
       }
     }
   }
@@ -29,8 +30,11 @@ if ($fah->musicShouldBeRunning) {
     $fah->checkMusicShouldBeRunning();
     if ($fah->musicShouldBeRunning) {
       if ($fah->musicIsRunning===false)  {
-        if (file_exists($fah->directories->scriptDirectory.'/fpp-after-hours-start.php')) {
-          include $fah->directories->scriptDirectory.'/fpp-after-hours-start.php';
+        $npd=$fah->getNowPlayingDetail();
+        if (trim($npd->error)!='') { //this stream has an error, find next stream and load it (if it exists)
+        }
+        if (file_exists($fah->directories['scriptDirectory'].'/fpp-after-hours-start.php')) {
+          include $fah->directories['scriptDirectory'].'/fpp-after-hours-start.php';
           sleep(1);
         }
       }
@@ -40,8 +44,8 @@ if ($fah->musicShouldBeRunning) {
           if ($fah->pingInternetRadio($host)===false) { //stop this broken stream and attempt to restart or start a new one
             exec("mpc stop && mpc clear");
             $fah->setCurrentInternetRadioHost();
-            if (file_exists($fah->directories->scriptDirectory.'/fpp-after-hours-start.php')) {
-              include $fah->directories->scriptDirectory.'/fpp-after-hours-start.php';
+            if (file_exists($fah->directories['scriptDirectory'].'/fpp-after-hours-start.php')) {
+              include $fah->directories['scriptDirectory'].'/fpp-after-hours-start.php';
               sleep(1);
             }
           }

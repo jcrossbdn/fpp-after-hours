@@ -1,345 +1,562 @@
 <?php
-ini_set('display_errors',true);
-error_reporting(E_ERROR);
-require_once $settings['pluginDirectory'].'/fpp-after-hours/fpp-after-hours-class.php';
-
-$fah=new fppAfterHours();
-
-if (isset($_GET['nowPlaying'])) { //return json nowPlaying details (ajax auto refresh)
-  $npd=$fah->getNowPlayingDetail();
-  @$out->title=($npd->title!==false ? $npd->title : "----No music is playing----");
-  @$out->detail=($npd->detail!==false ? $npd->detail : "");
-  $mpc=$fah->getMPCHash();
-  if ($fah->musicShouldBeRunning && time() - $mpc->lastChangeTimestamp > 60) @$out->detail.="<br>!!! Attempting restarts every minute until a stream is started !!!";
-  die(json_encode($out));
-}
-
-
-if (isset($_GET['runStartScript'])) {
-  include $fah->directories->scriptDirectory.'fpp-after-hours-start.php';
-  header("Location: ?plugin=fpp-after-hours&page=fpp-after-hours.php");
-  exit;
-}
-
-if (isset($_GET['runStopScript'])) {
-  include $fah->directories->scriptDirectory.'fpp-after-hours-stop.php';
-  header("Location: ?plugin=fpp-after-hours&page=fpp-after-hours.php");
-  exit;
-}
-
-if (isset($_GET['vup'])) {
-  if ($fah->musicShouldBeRunning) exec('mpc volume +1');
-  header("Location: ?plugin=fpp-after-hours&page=fpp-after-hours.php");
-}
-if (isset($_GET['vdn'])) {
-  if ($fah->musicShouldBeRunning) exec('mpc volume -1');
-  header("Location: ?plugin=fpp-after-hours&page=fpp-after-hours.php");
-}
-
-
-// ***************************************************************************************************** D E B U G   L O G S ************************* */
-if (isset($_GET['debugLog'])) {
-  if (file_exists($fah->directories->pluginDataDirectory."fpp-after-hours-debugLog{$_GET['debugLog']}.log")) {
-    echo "<pre>".file_get_contents($fah->directories->pluginDataDirectory."fpp-after-hours-debugLog{$_GET['debugLog']}.log")."</pre>";
-    exit;
+echo <<<EOF
+<style scoped>
+  @media screen and (min-width: 0px) {
+    .d-none { display: none!important; }
+    .d-inline { display: inline; }
+    .d-block { display: block; }
+    .d-table-cell { display: table-cell!important; }
   }
-  die("Could not locate a debug log for {$fah->directories->pluginDataDirectory}fpp-after-hours-debugLog{$_GET['debugLog']}.log");
-}
 
-
-
-// *********************************************************************************************************************************************************************************************************************
-// ********************************************************************************************************* S T A R T    L O C A L    M E D I A *******************************************************************
-if (isset($_GET['loadLocalMedia'])) {  //local media tab
-  echo "<font size=-1>";
-  echo "local media controls have not been written yet";
-  echo "</font>";
-  exit;
-}
-// ********************************************************************************************************* E N D    L O C A L    M E D I A *******************************************************************
-// *********************************************************************************************************************************************************************************************************************
-
-
-
-// *********************************************************************************************************************************************************************************************************************
-// ********************************************************************************************************* S T A R T    I N T E R N E T    R A D I O *******************************************************************
-
-if (isset($_POST['fah-submitInternet']) || isset($_POST['fah-deleteStream'])) {
-  //add a new stream - also handles deletes so adds, updates and deletes are handled at the same time
-  if (trim($_POST['fah-newStreamName']) != '' && trim($_POST['fah-newStreamURL']) != '') {
-    $name=trim($_POST['fah-newStreamName']);
-    $url=trim($_POST['fah-newStreamURL']);
-    @$fah->config->streams->$name=(object)array('url'=>$url, 'active'=>1, 'priority'=>9, 'volume'=>'100');
+  @media screen and (min-width: 992px) {
+    .d-none { display: none!important; }
+    .d-inline { display: inline; }
+    .d-block { display: block; }
+    .d-table-cell { display: table-cell!important; }
+    .d-lg-none { display: none!important;}
+    .d-lg-inline { display: inline; }
+    .d-lg-block { display: block; }
+    .d-lg-table-cell { display: table-cell!important; }
   }
-  
-  //update an existing stream
-  if (isset($_POST['priority'])) { //only update if there is at least 1 existing item posted
-    foreach ($_POST['priority'] as $streamName=>$null) {
-      //handle deletes
-      if (trim($_POST['priority'][$streamName])=='' && trim($_POST['volume'][$streamName])=='' && trim($_POST['streamName'][$streamName])=='' && trim($_POST['url'][$streamName])=='') unset($fah->config->streams->$streamName);
-      elseif (isset($_POST['fah-deleteStream']) && isset($_POST['fah-deleteStream'][$streamName])) unset($fah->config->streams->$streamName);
-      else { //handle everything else
-        @$fah->config->streams->$streamName->priority=intval(trim($_POST['priority'][$streamName]));
-        @$fah->config->streams->$streamName->volume=(trim($_POST['volume'][$streamName])=='-' ? '100' : intval(trim($_POST['volume'][$streamName])));
-        @$fah->config->streams->$streamName->url=trim($_POST['url'][$streamName]);
-        if (isset($_POST['active'][$streamName])) $fah->config->streams->$streamName->active=1;
-        else $fah->config->streams->$streamName->active=0;
-        //handle rename
-        $nn=trim($_POST['streamName'][$streamName]);
-        if (trim($streamName) !== $nn && trim($streamName) != '') {
-          $fah->config->streams->$nn = $fah->config->streams->$streamName;
-          unset($fah->config->streams->$streamName);
-        }
-      }      
-    }
+
+  .textboxAsLabel {
+    background: transparent!important;
+    border: none!important;
+    outline: none!important;
+    padding: 0px 0px 0px 0px!important;
   }
-  
-  //remove any stream entries that don't have names (identified in https://github.com/jcrossbdn/fpp-after-hours/issues/22)
-  if (isset($fah->config->streams) && count($fah->config->streams)) {
-    foreach ($fah->config->streams as $streamName=>$null) {
-      if (trim($streamName)=='') unset($fah->config->streams->{$streamName});
-    }
-  }
-  
-  $fah->saveConfigFile();
-}
 
-if (isset($_GET['loadInternetMedia'])) { //internet radio tab
-  echo "<font size=-1><form method='post' enctype='multipart/form-data' action='?plugin=fpp-after-hours&page=fpp-after-hours.php&activeTab=1'>";
-  //echo "<input type='checkbox' name='activeSource[internet]'".($fah->getActiveSource()=='internet' ? " checked" : "")."> Internet Radio is the After Hours Music Source<br><br>";
-  echo "<table border=1><tr><td>Active</td><td>Priority</td><td>Volume</td><td>Status</td><td>Stream Name</td><td>Stream URL</td><td>Options</td></tr>";
-  
-  if (isset($fah->config->streams) && count($fah->config->streams)) {
-    foreach ($fah->config->streams as $streamName=>$streamData) {
-      echo "<tr><td><input type='checkbox' name='active[$streamName]'".($streamData->active==0 ? "" : " checked")."></td><td><input type='text' size=3 name='priority[$streamName]' value='{$streamData->priority}'></td>
-      <td><input type='text' size=3 name='volume[$streamName]' value='{$streamData->volume}'></td><td>".($fah->pingInternetRadio($streamData->url)===true ? "IP is pingable":"<font color='red'>IP is not pingable</font>")."</td><td><input type='text' size=30 name='streamName[$streamName]' value='$streamName'></td><td><input type='text' size=50 name='url[$streamName]' value='{$streamData->url}'></td><td><input type='submit' name='fah-deleteStream[$streamName]' value='Delete'></td></tr>";
-    }
-  }
-  else echo "<tr><td colspan=6>No streams have been entered yet</td></tr>";
-  echo "</table>";
-  echo "
-      <br><br>
-      <input type='submit' value='Save' name='fah-submitInternet'>
-      
-      <br><br><hr><br><br>
-      
-      add new stream Name: <input type='text' name='fah-newStreamName' size=40><br>
-      Add new stream URL: <input type='text' name='fah-newStreamURL' size=90>
-      <br><br>
-      <i><a href='https://www.internet-radio.com/stations/christmas/#' target='_blank'>https://www.internet-radio.com/stations/christmas/#</a> has lots of radio stations</i>
-      </form></font>
-   ";
-  
-  exit;
-}
-// ********************************************************************************************************* E N D   I N T E R N E T    R A D I O *******************************************************************
-// *********************************************************************************************************************************************************************************************************************
+  .redIcon {color:red}
+</style>
 
-
-
-// *********************************************************************************************************************************************************************************************************************
-// ********************************************************************************************************* S T A R T   A D V A N C E D *******************************************************************
-if (isset($_GET['fah-adv-updatePlugin'])) {
-  (isset($_GET['gitHard']) ? $hard=true : $hard=false);
-  $git=$fah->pluginGitUpdate($hard);
-  if (count($git)) {
-    foreach ($git as $g) echo "<ul>$g</ul>";
-  }
-  echo "<strong>Command Complete.</strong> &nbsp; &nbsp; <a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&activeTab=2'>Click here to go back</a>";
-  exit;
-}
-
-if (isset($_GET['loadAdvanced'])) {  //local media tab
-  echo "<font size=-1>";
-  //echo "<strong>FPP Active Sound Card:</strong> ".$fah->getFPPActiveSoundCardName()."<br><br>";
-  //echo ($fah->checkForNewSoundCard()===true ? "There are sound cards in the system that are not configured in mpd. Click Run Start Script to load them<br><br>":"All system sound cards are currently loaded into mpd.<br><i>If you have changed the active sound card in fpp settings then you will have to click Run Start Script to update this plugin</i>");
-  
-  echo "<br><br><hr><strong>Plugin Github Status</strong> &nbsp; <a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&fah-adv-updatePlugin&nopage'>Click here to update</a><br>";
-  echo "<a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&fah-adv-updatePlugin&gitHard&nopage'>reset --hard</a> if you have made local changes to the plugin<br><br>";
-  $git=$fah->checkGitUpdates();
-  if (count($git)) {
-    foreach ($git as $g) echo "<ul>$g</ul>";
-  }
-  
-  //echo "<br><br><hr><strong>If asked to provide Advanced debug data please copy everything in the grey box below</strong> (there is no sensitive data here)<br>";
-  //echo "<pre>All Sound Cards<br>";
-  //print_r($fah->getSystemSoundCards());
-  //echo "<br>";
-  echo "<pre>";
-  echo "Settings<br>";
-  print_r($settings);
-  echo "<hr>fpp-after-hours class variables<br>";
-  print_r($fah);
-  echo "<hr>getFPPActiveSoundCardName<br>";
-  print_r($fah->getFPPActiveSoundCardName());
-  echo "<hr>getSystemSoundCards function return<br>";
-  print_r($fah->getSystemSoundCards());
-  echo "<hr>getSystemSoundCardToMPD function return<br>";
-  print_r($fah->getSystemSoundCardToMPD());
-  echo "<hr>MPDConfig function return<br>";
-  print_r($fah->getMPDConfig());
-  echo "<hr>fpp-after-hours and Playlists and Schedules<br>";
-  print_r($fah->getDebugData());
-  echo "</pre>";
-  
-  echo "</font>";
-  exit;
-}
-
-// ********************************************************************************************************* S T O P    A D V A N C E D *******************************************************************
-// *********************************************************************************************************************************************************************************************************************
-
-
-if (isset($_GET['installDependencies'])) {
-  $ret=$fah->installDependencies();
-  echo "<div id=\"elements\" class=\"settings\"><fieldset><legend>! ! ! Software Installation Report ! ! !</legend><div>";
-  if (count($ret)) {
-    foreach ($ret as $o) echo "$o<br>";
-    $fah=new fppAfterHours(); //reload class instance
-  }
-  else echo "ERROR: No response from installation command";
-  echo "<br><div align=\"center\"><a href='?plugin=fpp-after-hours&page=fpp-after-hours.php'>Click here to return to after hours plugin page</a></div>";
-  echo "</div></fieldset></div><br><br>";
-  exit;
-}
-
-if (!$fah->dependenciesAreLoaded) {
-  echo "
-  <div id=\"elements\" class=\"settings\">
-    <fieldset>
-      <legend>! ! ! Additional Software Must Be Installed ! ! !</legend>
-      <div align=\"center\"><a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&installDependencies'>Install now (this may take several minutes)</a><br>will run <i>sudo apt-get -y update && sudo apt-get -y install mpd mpc</i><br><strong>PLEASE REBOOT ONCE INSTALL HAS COMPLETED!</strong></div>
-    </fieldset>
+<div id="fahDependencies" class="hidden">
+  <div class="row">
+    <div class="col-sm-12 col-md-8 offset-md-2">
+        <div id="serviceStatus" class="alert alert-danger" style="text-align:center; color:black" role="alert">
+          <h3>! ! ! Additional Software Must Be Installed ! ! !</h3>
+          <p>will run <i>sudo apt update && sudo apt -y install mpd mpc</i></p>
+          <button id="fahInstallDepends" class="buttons btn-rounded" onClick="fahDependsInstall()">
+            <i class='fas fa-fw fa-play'></i>
+            <span class="playerControlButton-text">Install</span>
+          </button>
+        </div>
+    </div>
   </div>
-  <br><br>
-  ";
-  echo "If you previously installed this plugin and believe this is related to <a href='https://github.com/jcrossbdn/fpp-after-hours/issues/19' target='_blank'>github issue 19</a> then please reboot this pi to restore proper operation.";
-  exit;
-}
-else {    // ************************************************** M A I N    P L U G I N   B O D Y ***************************************************
-  if ($fah->config !== false) { //only show now play and control if the plugin has been configured (config file must exist)
-    echo "
-      <style>
-        #tabs .ui-state-active {
-          background: #5ba63c !important;
+</div>
+
+<div id="fahReady" class="container show">
+  <div class="row" style="min-height:200px;">
+    <div class="col-sm-12 col-md-8 offset-md-2">
+      <div id="fahNowPlaying" class="alert alert-secondary" style="text-align:center; color:black" role="alert">No music is playing</div>
+    </div>
+  </div>
+  <div class="row col-sm-12 col-md-8 offset-md-2 offset-lg-4">
+    <div id="btnStartDiv" class="col-3 col-sm-auto">
+      <button id="btnStart" class="buttons btn-rounded btn-success disableButtons" onClick="fahStart();">
+        <i class='fas fa-fw fa-play'></i>
+        <span class="playerControlButton-text">Start</span>
+      </button>
+    </div>
+    <div id="btnStopDiv" class="col-3 col-sm-auto">
+      <button id="btnStop" class="buttons btn-rounded btn-success disableButtons" onClick="fahStop();">
+        <i class='fas fa-fw fa-stop'></i>
+        <span class="playerControlButton-text">Stop</span>
+      </button>
+    </div>
+    <div id="slideVolumeDiv" class="col-6 col-sm-auto" style="text-align:center">
+      <input id="slideVolume" type="range" min="0" max="100" value="100" step="1" disabled oninput="slideVolumeChange(this.value);" onchange="slideVolumeChange(this.value);" />
+      <span id="slideVolumeLabel" class="text-muted">100</span>
+    </div>
+  </div>
+
+  <div class="row col-sm-3 col-md-3 col-lg-2 offset-sm-9 offset-md-9 offset-lg-10">
+    <button id="addStream" class="buttons btn-rounded btn-success" onclick="addEditStream(0);"><i class='icon fpp-icon-plus' style='cursor:pointer;'></i> Add Stream</button>
+  </div>
+
+  <div id="fahTabs" class="row"><br><hr><br></div>
+  <div id="fahStreamsDiv" class="row">
+    <form id="fahStreamsForm">
+      <table id="fahStreamsTable" class="fppSelectableRowTable">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Active</th>
+            <th>Stream Name</th>
+            <th class="d-none d-lg-table-cell">Stream URL</th>
+            <th class="d-none d-lg-table-cell">Volume</th>
+            <th class="d-none d-lg-table-cell">Options</th>
+          </tr>
+        </thead>
+        <tbody id="fahStreams">
+        </tbody>
+      </table>
+    </form>
+  </div>
+</div>
+
+
+<script>
+  let slideVolumeChanged=false;
+  let actualVolume=100;
+
+  function loadInternetStreams() {
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/api/plugin/fpp-after-hours/getStreams?noPing", //load quickly with no ping, then load again with ping check and identify any failed streams
+      success: function(data) {
+        if (typeof data.status !== 'undefined') {
+          if (data.count > 0) {
+            $.each(data.data, function(i,item) {
+              tr=`
+                <tr id='priority_` + item.uid + `'>
+                  <td class="enable-sortable">
+                    <i class='rowGripIcon fpp-icon-grip' style='cursor:grab;'></i>
+                    <input type='hidden' id='prio_` + item.uid + `' value='` + item.priority + `'>
+                  </td>
+                  <td>
+                    <input class='streamData' type='checkbox' id='active_` + item.uid + `' uid='` + item.uid + `' style='cursor:pointer;' onclick='saveStreamData($(this))' name='stream_active'` + (item.active=='1' ? " checked" : "") + `>
+                  </td>
+                  <td>
+                    <i id='fah_streamError_` + item.uid + `' class='fas fa-exclamation-triangle redIcon d-none' alt='Stream URL not respoding'></i>
+                    <div class='d-table-cell d-lg-none' uid='` + item.uid + `' style='cursor:pointer;' onclick='addEditStream($(this))'>` + ((item.streamName).trim().length==0 ? "_" : item.streamName) + `</div>
+                    <input type='text' id='streamName_` + item.uid + `' uid='` + item.uid + `' name='stream_name' oninput='growToShow($(this),true)' class='streamData textboxAsLabel d-none d-lg-table-cell' value='` + item.streamName + `'></input>
+                  </td>
+                  <td class='d-none d-lg-table-cell'>
+                    <input type='text' id='url_` + item.uid + `' uid='` + item.uid + `' name='stream_URL' oninput='growToShow($(this),true)' class='streamData textboxAsLabel' value='` + item.url + `'></input>
+                  </td>
+                  <td class='d-none d-lg-table-cell'>
+                    <input type='number' size=4 maxlength=3 id='volume_` + item.uid + `' uid='` + item.uid + `' name='stream_volume' oninput='saveStreamData($(this))' class='streamData textboxAsLabel' value='` + item.volume + `'>
+                  </td>
+                  <td class='d-none d-lg-table-cell'>
+                    <div class='d-lg-inline' style='margin-left:10px;margin-right:15px;' uid='` + item.uid + `' onclick='addEditStream($(this))'><i class='icon fpp-icon-edit' style='cursor:pointer;'></i></div>
+                    <div class='d-lg-inline' style='margin-left:10px;margin-right:15px;' uid='` + item.uid + `' onclick='deleteStream(` + item.uid + `)'><i class='icon fpp-icon-trash' style='cursor:pointer;'></i></div>
+                  </td>
+                </tr>
+              `;
+              if ($.trim(tr) != '') $("#fahStreamsTable tbody").append(tr);
+              growToShow($("#streamName_"+item.uid),false);
+              growToShow($("#url_"+item.uid),false);
+            });
+
+            $.ajax({
+              type: "GET",
+              dataType: "json",
+              url: "/api/plugin/fpp-after-hours/getStreams", //get streams ping data
+              success: function(data) {
+                if (typeof data.status !== 'undefined') {
+                  if (data.count > 0) {
+                    $.each(data.data, function(i,item) {
+                      if (item.ping == false) {
+                        $("#fah_streamError_"+item.uid).removeClass("d-none");
+                      }
+                    })
+                  }
+                }
+              }
+            })
+
+          }
         }
-      </style>
-      <script>
-        function getElements() {
+      }
+    });
+  }
+
+  function deleteStream(uid) {
+    if (confirm("Are you sure you want to delete stream " + $("#streamName_"+uid).val())) {
+      $.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/api/plugin/fpp-after-hours/deleteStream?deleteStream=" + uid,
+        success: function(data) {
+          location.reload();
+        },
+        error: function(data) {alert("Error deleting stream")}
+      });
+    }
+    return false;
+  }
+
+  function addEditStream(thiss) { //modal editor window
+    if (thiss != 0) { //pull original form data for editing from the underlaying dom
+      uid=thiss.attr('uid');
+      //priority=$("#prio_"+uid).val();
+      active=($("#active_"+uid).prop('checked') ? 1 : 0);
+      name=$("#streamName_"+uid).val();
+      url=$("#url_"+uid).val();
+      volume=$("#volume_"+uid).val();
+      title="Edit stream<br>" + name;
+    }
+    else {
+      uid=0;
+      active=1;
+      name="";
+      url="";
+      volume=100;
+      title="Add new stream";
+    }
+
+    var options = {
+      id: "fahAddEditStream",
+      title: title,
+      body: `
+        <input type='checkbox' id='Eactive' style='cursor:pointer;' ` + (active=='1' ? " checked" : "") + `> Active
+        <br><br>
+        Stream Name<br>
+        <input type='text' style="width:100%" id='EstreamName' value='` + name + `'></input>
+        <br><br>
+        Stream URL<br>
+        <input type='text' style="width:100%" id='Eurl' value='` + url + `'></input>
+        <br><br>
+        Volume<br>
+        <input id="Evolume" type="range" min="0" max="100" value="100" step="1" oninput="EvolumeChange(this.value);" onchange="EvolumeChange(this.value);" />
+        <span id="EvolumeLabel" class="text-muted">100</span>
+        <div id="fahAddEditStreamError" class="alert alert-danger d-none"></div>
+      `,
+      class: "modal-dialog-scrollable",
+      noClose: true,
+      keyboard: true,
+      backdrop: "static",
+      footer: ""
+    };
+    if (uid > 0) { //  EDIT EXISTING ENTRY
+      options.buttons=buttons= {
+        "Delete": {
+          id: 'fahDependsCloseDialogButton',
+          click: function() {
+            deleteStream(uid);
+          },
+          disabled: false,
+          class: 'btn-danger'
+        },
+        "Cancel": {
+          id: 'fahDependsCloseDialogButton',
+          click: function() {CloseModalDialog("fahAddEditStream"); location.reload();},
+          disabled: false,
+          class: 'btn-secondary'
+        },
+        "Save": {
+          id: 'fahDependsCloseDialogButton',
+          click: function() {
+            postData={uid:uid};
+            postData.active=($("#Eactive").prop('checked') ? 1 : 0);
+            postData.name=$("#EstreamName").val();
+            postData.url=$("#Eurl").val();
+            postData.volume=$("#Evolume").val();
+            $.ajax({
+              type: "POST",
+              data: postData,
+              dataType: "json",
+              url: "/api/plugin/fpp-after-hours/updateStream",
+              success: function(data) {
+                CloseModalDialog("fahAddEditStream");
+                location.reload();
+              },
+              error: function(data) {
+                $("#fahAddEditStreamError").removeClass("d-none").html("Error updating stream data");
+              }
+            }); 
+           
+          },
+          disabled: false,
+          class: 'btn-success'
+        }
+      }
+
+    }
+    else { // CREATE NEW ENTRY
+      options.buttons=buttons= {
+        "Cancel": {
+          id: 'fahDependsCloseDialogButton',
+          click: function() {CloseModalDialog("fahAddEditStream"); location.reload();},
+          disabled: false,
+          class: 'btn-secondary'
+        },
+        "Create": {
+          id: 'fahDependsCloseDialogButton',
+          click: function() {
+            postData={uid:uid};
+            postData.active=($("#Eactive").prop('checked') ? 1 : 0);
+            postData.name=$("#EstreamName").val();
+            postData.url=$("#Eurl").val();
+            postData.volume=$("#Evolume").val();
+            $.ajax({
+              type: "POST",
+              data: postData,
+              dataType: "json",
+              url: "/api/plugin/fpp-after-hours/updateStream",
+              success: function(data) {
+                if (data.status===false) {
+                  //EnableModalDialogCloseButton("fahAddEditStream");
+                  $("#fahAddEditStreamError").removeClass("d-none").html(data.data);
+                }
+                else {
+                  CloseModalDialog("fahAddEditStream");
+                  location.reload();
+                }
+              },
+              error: function(data) {
+                //EnableModalDialogCloseButton("fahAddEditStream");
+                $("#fahAddEditStreamError").removeClass("d-none").html("Error creating stream data");
+              }
+            }); 
+          },
+          disabled: false,
+          class: 'btn-success'
+        }
+      }
+
+    }
+    $("#fahAddEditStreamCloseDialogButton").prop("disabled", false);
+    DoModalDialog(options);
+    EvolumeChange(volume);
+    $("#Evolume").val(volume);
+  }
+
+  function EvolumeChange(value) { //slider only for small screen edit modal
+    $("#EvolumeLabel").html(value);
+  }
+
+
+  function growToShow(thiss, saveValueNow) { //wanted to call this growerShower but growToShow is more representative, haha
+    if ((thiss.val()).length >= 20)  {
+      let aid=thiss.attr('id');
+      $('#' + thiss.attr('id')).attr('size',(((thiss.val()).length + 1)));
+    }
+    else $('#' + thiss.attr('id')).attr('size',20);
+
+    if (saveValueNow===true) {
+      saveStreamData(thiss);
+    }
+  }
+
+  let pendingPingRequest='none'; //stores ajax instance for ping request so we can cancel previous queries if another update has been made before the first one completed
+  function saveStreamData(thiss) {
+    postData={uid:thiss.attr('uid')};
+    switch (thiss.attr('name')) {
+      case 'stream_active':
+        postData.active=(thiss.prop('checked') ? 1 : 0); break;
+      case 'stream_name':
+        postData.name=(thiss.val()); break;
+      case 'stream_URL':
+        postData.url=(thiss.val()); break;
+      case 'stream_volume':
+        postData.volume=(thiss.val()); break;
+    }
+
+    $.ajax({
+      type: "POST",
+      data: postData,
+      dataType: "json",
+      url: "/api/plugin/fpp-after-hours/updateStream",
+      success: function(data) {
+        pendingPingRequest=$.ajax({
+          dataType: "json",
+          url: "/api/plugin/fpp-after-hours/getStreamPing?uid=" + thiss.attr('uid'),
+          beforeSend: function() {
+            if (pendingPingRequest != 'none' && pendingPingRequest.readyState < 4) pendingPingRequest.abort();
+          },
+          success: function(data) {
+            if (data.status==false) $("#fah_streamError_"+thiss.attr('uid')).removeClass("d-none");
+            else {
+              if (data.data==true) $("#fah_streamError_"+thiss.attr('uid')).addClass("d-none");
+              else $("#fah_streamError_"+thiss.attr('uid')).removeClass("d-none");
+            }
+          },
+          error: function(data,ajaxOptions,thrownError) {
+            if (thrownError=='abort') return;
+            $("#fah_streamError_"+thiss.attr('uid')).removeClass("d-none");
+          }
+        });
+      },
+      error: function(data) {
+        alert ("Error updating stream data");
+      }
+    });
+  }
+
+
+  function fahStart() {
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/api/plugin/fpp-after-hours/start",
+      success: function(data) {
+        playNowControls(false,true,true,'','');
+      },
+      error: function(data) {alert("Error running script")}
+    });
+  }
+  
+  function fahStop() {
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/api/plugin/fpp-after-hours/stop",
+      success: function(data) {
+        playNowControls(true,false,false,'','');
+      },
+      error: function(data) {alert("Error running script")}
+    });
+  }
+
+  function playNowControls(start,stop,volume,previous,next) { // true is enabled, false is disabled, '' is hidden
+    let c=$("#btnStart");
+    let d=$("#btnStartDiv");
+    if (start==true && c.hasClass("disableButtons")) c.removeClass("disableButtons");
+    if (start==false && !c.hasClass("disableButtons")) c.addClass("disableButtons");
+    if (start==='' && !d.hasClass("hidden")) d.addClass("hidden");
+    else if (d.hasClass("hidden")) d.removeClass("hidden");
+    
+    c=$("#btnStop");
+    d=$("#btnStopDiv");
+    if (stop==true && c.hasClass("disableButtons")) c.removeClass("disableButtons");
+    if (stop==false && !c.hasClass("disableButtons")) c.addClass("disableButtons");
+    if (stop==='' && !d.hasClass("hidden")) d.addClass("hidden");
+    else if (d.hasClass("hidden")) d.removeClass("hidden");
+
+    c=$("#slideVolume");
+    d=$("#slideVolumeDiv");
+    if (volume==true && c.prop("disabled")===true) c.prop("disabled",false);
+    if (volume==false && c.prop("disabled")===false) c.prop("disabled",true);
+    if (volume==='' && !d.hasClass("hidden")) d.addClass("hidden");
+    else if (d.hasClass("hidden")) d.removeClass("hidden");
+  }
+
+  function fahGetDetails() {
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/api/plugin/fpp-after-hours/getDetails",
+      success: function(data) {
+        //console.log(data.data);
+        if (typeof data.status !== 'undefined') {
+          $("#fahNowPlaying").html("<h4>"+data.data.title+"</h4><p>"+data.data.detail+"</p>");
+          if (data.data.musicIsRunning===true) {
+            if ($("#fahNowPlaying").hasClass("alert-danger")) $("#fahNowPlaying").removeClass("alert-danger").addClass("alert-secondary");
+            actualVolume=parseInt(data.data.mpdVolume);
+            playNowControls(false,true,true,'','');
+          }
+          else if (data.data.musicIsRunning===false && data.data.musicShouldBeRunning===true) {
+            if ($("#fahNowPlaying").hasClass("alert-secondary")) $("#fahNowPlaying").removeClass("alert-secondary").addClass("alert-danger");
+            actualVolume=parseInt(data.data.mpdVolume);
+            playNowControls(false,true,true,'','');
+          }
+          else if (data.data.musicIsRunning===false) {
+            playNowControls(true,false,false,'','');
+          }
+
+          if (data.data.dependenciesAreLoaded===false) {
+            if ($("#fahDependencies").hasClass("hidden")) $("#fahDependencies").removeClass("hidden").addClass("show");
+            if ($("#fahReady").hasClass("show")) $("#fahReady").removeClass("show").addClass("hidden");
+          }
+          else {
+            if ($("#fahDependencies").hasClass("show")) $("#fahDependencies").removeClass("show").addClass("hidden");
+            if ($("#fahReady").hasClass("hidden")) $("#fahReady").removeClass("hidden").addClass("show");
+          }
+        }
+      }
+    });
+  }
+
+  function slideVolumeChange(value) { //only pushed once a second and smart updates the range slider based on current volume as necessary
+    slideVolumeChanged=true;
+    $("#slideVolumeLabel").html(value);
+  }
+  setInterval(function() { //handle range slider volume set and get
+    if ($("#fahReady").hasClass("show")) {
+      let slideVolume=parseInt($("#slideVolume").val());
+      //console.log("Desired: " + slideVolume + " - Current: " + actualVolume + " - SVC: "+ (slideVolumeChanged==true ? "Yes" : "No"));
+      if (slideVolumeChanged===true) { //send desired volume to mpd
+        if (actualVolume != slideVolume) {
           $.ajax({
-            type: \"GET\",
-            dataType: \"json\",
-            url: \"?plugin=fpp-after-hours&page=fpp-after-hours.php&nowPlaying&nopage\",
-            dataType: \"html\",
+            type: "GET",
+            dataType: "json",
+            url: "/api/plugin/fpp-after-hours/setMPDvolume?value=" + slideVolume,
             success: function(data) {
-              json=JSON.parse(data.replace('<!DOCTYPE html>\\n<html>\\n',''));
-              $('#fpp-after-hours-nowPlaying').html(json.title + '<hr>' + json.detail);
-              //if (json.allowVC) $(\"#fpp-after-hours-vup\").prop(\"disabled\",false); else $(\"#fpp-after-hours-vup\").prop(\"disabled\",true); 
-              //console.log(json);
+              if (parseInt(data.data)==slideVolume)  {
+                actualVolume=parseInt(data.data);
+                slideVolumeChanged=false;
+              }
+            },
+            error: function() {
+              slideVolumeChanged=false;
             }
           });
         }
-        
-        $(document).ready(function() {
-          getElements();
+      }
+      else if (actualVolume != slideVolume) {  //reset volume to what is current from mpd
+        $("#slideVolumeLabel").html(actualVolume);
+        $("#slideVolume").val(actualVolume);
+      }
+    }
+  },1000);
+
+  $(document).ready(function() {
+    fahGetDetails(); //run immediately and then will refresh every 3 seconds
+
+    $("#fahStreamsTable tbody").sortable({
+      placeholder: "ui-state-highlight",
+      handle: ".enable-sortable",
+      stop: function(event,ui) {
+        console.log($("#fahStreamsTable tbody").sortable('serialize'));
+        $.ajax({
+          type: "POST",
+          data: $("#fahStreamsTable tbody").sortable('serialize'),
+          dataType: "json",
+          url: "/api/plugin/fpp-after-hours/updateStream",
+          success: function(data) {
+            //console.log(data);
+          },
+          error: function(data) {
+            //console.log(data);
+          }
         });
-        
-        setInterval(function() {
-          getElements()
-        },3000);
-        
-        
-      </script>
-    ";
-    
-    echo "
-      <div id=\"elements\" class=\"settings\">
-        <fieldset>
-          <legend>Now Playing</legend>
-          <div align=\"center\" id=\"fpp-after-hours-nowPlaying\"></div>
-        </fieldset>
-      </div>
-      
-      <br><br>
-      
-      <div id=\"elements\" class=\"settings\">
-        <fieldset>
-          <legend>Control</legend>
-          <div align=\"center\">
-            <table border=0><tr><td><a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&runStartScript&nopage'>Run Start Script</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a href='?plugin=fpp-after-hours&page=fpp-after-hours.php&runStopScript&nopage'>Run Stop Script</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a id='fpp-after-hours-vup' href='?plugin=fpp-after-hours&page=fpp-after-hours.php&vup&nopage'>Volume +</a></td><td> &nbsp; &nbsp; &nbsp; &nbsp; </td><td><a id='fpp-after-hours-vup' href='?plugin=fpp-after-hours&page=fpp-after-hours.php&vdn&nopage'>Volume -</a></td></tr></table>
-    ";
+      }
+    });
+    loadInternetStreams();
 
-    //if ($fah->musicShouldBeRunning) echo "Volume will be reset to $fah->showVolume  (Show Level) when Stop Script is executed";
-    
-    echo "      
-          </div>
-        </fieldset>
-      </div>
-      
-      <br><br>
-    ";
-  }
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/api/plugin/fpp-after-hours/updateScripts",
+      success: function(data) {
+        console.log(data);
+      }
+    });
+  });
   
-  $showNotices=false;
-  $notices=array();
-  
-  if (!$fah->cronOkay) {
-    $fah->updateCron();
-    $fah->refreshCronOkayFlag();
-    if (!$fah->cronOkay) {
-      $showNotices=true;
-      $notices[]="ERROR: Cron File could not be copied to cron.d";
-    }
-  }
+  setInterval(function() {
+    fahGetDetails()
+  },3000);
 
-  if (!$fah->scriptsOkay) {
-    $fah->updateScripts();
-    $fah->refreshScriptsOkayFlag();
-    if (!$fah->scriptsOkay) {
-      $showNotices=true;
-      $notices[]="ERROR: script files could not be copied to fpp script directory";
-    }
+  function fahDependsInstall() {
+    var options = {
+      id: "fahDependsInstall",
+      title: "Installing fpp-after-hours additional software",
+      body: "<textarea style='width: 99%; height: 500px;' disabled id='fahInstallProgress'></textarea>",
+      class: "modal-dialog-scrollable",
+      noClose: true,
+      keyboard: false,
+      backdrop: "static",
+      footer: "",
+      buttons: {
+        "Close": {
+          id: 'fahDependsCloseDialogButton',
+          click: function() {CloseModalDialog("fahDependsInstall"); location.reload();},
+          disabled: true,
+          class: 'btn-success'
+        }
+      }
+    };
+    $("#fahDependsCloseDialogButton").prop("disabled", true);
+    DoModalDialog(options);
+    StreamURL('/api/plugin/fpp-after-hours/installDependencies', 'fahInstallProgress', 'fahDependsInstallDone');
   }
-  
-  if ($showNotices && count($notices)) {
-    echo "
-      <div id=\"elements\" class=\"settings\">
-        <fieldset>
-          <legend>ERRORS and Warnings were encountered</legend>
-    ";
-    foreach ($notices as $notice) echo " - $notice<br>";
-    echo "
-        </fieldset>
-      </div>
-      <br><br>
-    ";
-  } 
-  
-  
-  //$activeTab=(isset($_GET['activeTab']) ? $_GET['activeTab'] : ($fah->getActiveSource()=="local" ? 0 : 1));
-  $activeTab=0; //only Internet Radio shows now
-  echo "
-    <script>
-      $( function() {
-        $( \"#tabs\" ).tabs({active:$activeTab});
-      } );
-    </script>
-    </head>
-    <body>
-    
-    <div id=\"elements\" class=\"settings\">
-      <fieldset>
-        <legend>FPP After Hours Music</legend> 
-        <div id=\"tabs\">
-          <ul>
-            <!--<li><a href=\"?plugin=fpp-after-hours&page=fpp-after-hours.php&loadLocalMedia&nopage\">Local Media</a></li>-->
-            <li><a href=\"?plugin=fpp-after-hours&page=fpp-after-hours.php&loadInternetMedia&nopage\">Internet Radio</a></li>
-            <li><a href=\"?plugin=fpp-after-hours&page=fpp-after-hours.php&loadAdvanced&nopage\">Advanced</a></li>
-          </ul>
-        </div>
-      </fieldset>
-    </div>
-    <br><br>        
-  ";
-}
+  function fahDependsInstallDone() {
+    $("#fahDependsCloseDialogButton").prop("disabled",false);
+    //EnableModalDialogCloseButton("fahDependsInstall");  //we want to force the location.reload task so instead of hooking into the modal, just force the close button to be used
+  }
+</script>
+EOF;
 ?>
