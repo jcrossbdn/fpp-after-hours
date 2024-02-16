@@ -73,7 +73,7 @@ File1=http://192.111.140.11:8576/listen.pls?sid=1
 copy the http://192.111.140.11:8567 (ignore the ending slash and text) and that is your stream URL that you can paste into the after hours plugin page.
 
 ### Using this plugin in conjunction with your show playlist
-Once the plugin is configured you will see there are two commands presented as "FPP Commands" in the playlist editor called "FPP After Hours Plugin - Start" and "FPP After Hours Plugin - Stop".
+Once the plugin is configured you will see there are two commands presented as "FPP Commands" in the playlist editor called "FPP After Hours Plugin - Start" and "FPP After Hours Plugin - Stop".  If you don't see these Commands then you must either reboot the computer or restart FPPD.
 
 1. To start and stop the after hours radio station go to the desired playlist (Content Setup / Playlists / click the desired playlist).
 2. You can then click "Add a Sequence/Entry"

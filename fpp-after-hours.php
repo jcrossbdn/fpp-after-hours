@@ -542,9 +542,18 @@ echo <<<EOF
       backdrop: "static",
       footer: "",
       buttons: {
-        "Close": {
+        "Close and Restart FPPD": {
           id: 'fahDependsCloseDialogButton',
-          click: function() {CloseModalDialog("fahDependsInstall"); location.reload();},
+          click: function() {
+            $.ajax({
+              type: "GET",
+              dataType: "json",
+              url: "/api/system/fppd/restart",
+              success: function(data) {
+              }
+            });
+            CloseModalDialog("fahDependsInstall"); location.reload();\
+          },
           disabled: true,
           class: 'btn-success'
         }
