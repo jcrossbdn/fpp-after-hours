@@ -90,6 +90,7 @@ echo <<<EOF
         <tbody id="fahStreams">
         </tbody>
       </table>
+      <a href='https://www.internet-radio.com/stations/christmas/#' target='_blank'>https://www.internet-radio.com/stations/christmas/#</a> has lots of radio stations (see help for instructions)</i>
     </form>
   </div>
 </div>

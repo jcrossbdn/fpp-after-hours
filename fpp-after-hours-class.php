@@ -496,7 +496,6 @@ class fppAfterHours {
 	          }
             */
             exec("sudo systemctl restart mpd");
-            
 	          unset($mpdConfig);
 	          unset($newConfig);
 	          
