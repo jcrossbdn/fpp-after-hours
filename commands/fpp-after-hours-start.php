@@ -11,7 +11,7 @@ if ($fah->config !== false) {
   if ($fah->config['activeSource']=='internet') {
     if (isset($fah->config['streams']) && count($fah->config['streams'])) {
       foreach ($fah->config['streams'] as $sdata) {
-        if ($sdata['active']==true)  {
+        if ($sdata['active']===true || $sdata['active']=="true")  {
           if ($fah->pingInternetRadio($sdata['url'])) $streamPick[$sdata['priority']][]=array('url'=>$sdata['url'], 'volume'=>$sdata['volume']);
         }
       }
