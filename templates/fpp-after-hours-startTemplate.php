@@ -1,4 +1,3 @@
-#!/usr/bin/php
 <?php
 //file_put_contents('/home/fpp/media/plugindata/fpp-after-hours-teststart',print_r($argv,true),FILE_APPEND);
 require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';

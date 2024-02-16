@@ -1,4 +1,3 @@
-#!/usr/bin/php
 <?php
 //file_put_contents('/home/fpp/media/plugindata/teststop',print_r($argv,true),FILE_APPEND);
 if (isset($argv[1])) $argv[1]=preg_replace('/\D/','',$argv[1]); //fade in over seconds
