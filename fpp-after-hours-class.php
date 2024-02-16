@@ -488,12 +488,15 @@ class fppAfterHours {
             if (!file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf")) exec("yes | sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf"); //make a backup of this file
             exec("yes | sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
             unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
-	          if (!$forceUpdate) {  
+	          /*if (!$forceUpdate) {  
 	            exec("sudo mpd --kill");
 	            sleep(3);
 	            exec("sudo mpd");
 	            sleep(3);
 	          }
+            */
+            exec("sudo systemctl restart mpd");
+            
 	          unset($mpdConfig);
 	          unset($newConfig);
 	          

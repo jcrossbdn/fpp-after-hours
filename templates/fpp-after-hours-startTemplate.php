@@ -79,8 +79,15 @@ if ($fah->config !== false) {
         if ($runFromCronMonitorStream===true) sleep(10); //wait 10 seconds before testing the stream for errors (only when run from the monitorStream script)
         $npd=$fah->getNowPlayingDetail();
         if (trim($npd->error) != '') {
-          error_log("fpp-after-hours... ERROR from active stream: ".$npd->error);
-          unset($streamPick[$spId]);
+          if (strstr($npd->error,"Failed to open \"default detected output\" (sndio);") !== false) {
+            //mpd likely needs a restart
+            error_log("fpp-after-hours... MPD ERROR (Failed to open \"default detected output\" (sndio).  Attempting mpd config rebuild and restart");
+            $fah->updateMPDConfig(true);
+          }
+          else {
+            error_log("fpp-after-hours... ERROR from active stream: ".$npd->error);
+            unset($streamPick[$spId]);
+          }
         }
       } while (count($streamPick) && trim($npd->error)!=''); //try to load a stream until there is no error returned or no entries left to try
     }
