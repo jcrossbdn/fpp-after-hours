@@ -552,7 +552,7 @@ echo <<<EOF
               success: function(data) {
               }
             });
-            CloseModalDialog("fahDependsInstall"); location.reload();\
+            CloseModalDialog("fahDependsInstall"); location.reload();
           },
           disabled: true,
           class: 'btn-success'
