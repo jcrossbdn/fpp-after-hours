@@ -1,3 +1,4 @@
+#!/usr/bin/php
 <?php
 //file_put_contents('/home/fpp/media/plugindata/teststop',print_r($argv,true),FILE_APPEND);
 if (isset($argv[1]) && $argv[1]=='fade' && isset($argv[2]) && is_numeric($argv[2])) {

@@ -1,3 +1,4 @@
+#!/usr/bin/php
 <?php
 require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
 $fah=new fppAfterHours();
