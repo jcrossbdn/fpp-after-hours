@@ -88,9 +88,9 @@ function fah_updateStream() {
                     }
                     break;
 
+                case 'volume': $val=($val > 100 ? 100 : ($val < 0 ? 0 : $val));
                 case 'active':
                 case 'url':
-                case 'volume':
                     foreach ($streams as $sKey=>$sData) {
                         if ($sData['uid']==$_POST['uid']) {
                             $streams[$sKey][$key]=$val;
