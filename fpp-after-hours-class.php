@@ -556,15 +556,13 @@ class fppAfterHours {
   */
   
   public function pingInternetRadio($host) {
-    /*$purl=parse_url($host);
+    $purl=parse_url($host);
     $host=$purl['host'];
     $port=(isset($purl['port']) ? $purl['port'] : ($purl['scheme']=='http' ? 80 : 443));
-    if ($fp=@fsockopen($host, $port, $errno, $errstr, 1)) return true;
-    return false;
-    */
+    
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_URL, $host);
+    curl_setopt($ch, CURLOPT_URL, "{$host}:{$port}");
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_HEADER, true);
@@ -574,6 +572,7 @@ class fppAfterHours {
     $http_code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     curl_close($ch);
     if ($http_code >= 200 && $http_code <= 399) return true;
+    if ($fp=@fsockopen($host, $port, $errno, $errstr, 1)) return true; //try a second time using old fsockopen method
     return false;
   }
 }
