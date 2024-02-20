@@ -131,7 +131,7 @@ function fah_getStreams() {
             else if ($streamData['active']=='true') $streams[$streamData['priority']]['active']=true; //handle string to bool conversion
             else $streams[$streamData['priority']]['active']=false;
 
-            $streams[$streamData['priority']]['volume']=($streamData['volume'] > 100 ? 100 : ($streamData['volume'] < 0 ? 0 : $streamData['volume']));
+            $streams[$streamData['priority']]['volume']=(intval($streamData['volume']) > 100 ? 100 : (intval($streamData['volume']) < 0 ? 0 : intval($streamData['volume'])));
 
             if (!isset($_GET['noPing']) || (isset($_GET['noPing']) && $_GET['noPing']=='false')) $streams[$streamData['priority']]['ping']=($fah->pingInternetRadio($streamData['url'])===true ? true:false);
         }

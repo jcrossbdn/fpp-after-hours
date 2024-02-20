@@ -2,7 +2,7 @@
 echo "Removing cron.d entry"
 rm -rf /etc/cron.d/fpp-after-hours-cron
 
-sleep 5
+sleep 1
 
 echo "Removing mpd and mpc"
 apt -y remove --purge mpd mpc
