@@ -197,7 +197,7 @@ echo <<<EOF
       title="Add new stream";
     }
 
-    var options = {
+    var fahAESOptions = {
       id: "fahAddEditStream",
       title: title,
       body: `
@@ -221,7 +221,7 @@ echo <<<EOF
       footer: ""
     };
     if (uid > 0) { //  EDIT EXISTING ENTRY
-      options.buttons=buttons= {
+      fahAESOptions.buttons=buttons= {
         "Delete": {
           id: 'fahDependsCloseDialogButton',
           click: function() {
@@ -266,7 +266,7 @@ echo <<<EOF
 
     }
     else { // CREATE NEW ENTRY
-      options.buttons=buttons= {
+      fahAESOptions.buttons=buttons= {
         "Cancel": {
           id: 'fahDependsCloseDialogButton',
           click: function() {CloseModalDialog("fahAddEditStream"); location.reload();},
@@ -309,7 +309,7 @@ echo <<<EOF
 
     }
     $("#fahAddEditStreamCloseDialogButton").prop("disabled", false);
-    DoModalDialog(options);
+    DoModalDialog(fahAESOptions);
     EvolumeChange(volume);
     $("#Evolume").val(volume);
   }
@@ -532,7 +532,7 @@ echo <<<EOF
   },3000);
 
   function fahDependsInstall() {
-    var options = {
+    var fahDIOptions = {
       id: "fahDependsInstall",
       title: "Installing fpp-after-hours additional software",
       body: "<textarea style='width: 99%; height: 500px;' disabled id='fahInstallProgress'></textarea>",
@@ -560,7 +560,7 @@ echo <<<EOF
       }
     };
     $("#fahDependsCloseDialogButton").prop("disabled", true);
-    DoModalDialog(options);
+    DoModalDialog(fahDIOptions);
     StreamURL('/api/plugin/fpp-after-hours/installDependencies', 'fahInstallProgress', 'fahDependsInstallDone');
   }
   function fahDependsInstallDone() {
