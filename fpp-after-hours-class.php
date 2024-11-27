@@ -41,7 +41,7 @@ class fppAfterHours {
     $this->refreshCronOkayFlag();
     $this->refreshScriptsOkayFlag();
     $this->checkForMPDFormat(); //do this only so we don't have to update startup script to perform the format and bitrate mpd.conf update - 2019-11-06
-    $this->checkMakeScriptsExecutable();
+    //$this->checkMakeScriptsExecutable();  //should no longer be required as execute bit should now be properly configured in git
   }
 
   private function databaseOpen($write=false) {
