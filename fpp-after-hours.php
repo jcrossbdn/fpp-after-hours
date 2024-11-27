@@ -221,7 +221,7 @@ echo <<<EOF
       footer: ""
     };
     if (uid > 0) { //  EDIT EXISTING ENTRY
-      fahAESOptions.buttons=buttons= {
+      fahAESOptions.buttons= {
         "Delete": {
           id: 'fahDependsCloseDialogButton',
           click: function() {
@@ -266,7 +266,7 @@ echo <<<EOF
 
     }
     else { // CREATE NEW ENTRY
-      fahAESOptions.buttons=buttons= {
+      fahAESOptions.buttons= {
         "Cancel": {
           id: 'fahDependsCloseDialogButton',
           click: function() {CloseModalDialog("fahAddEditStream"); location.reload();},
