@@ -184,7 +184,7 @@ echo <<<EOF
       //priority=$("#prio_"+uid).val();
       active=($("#active_"+uid).prop('checked') ? true : false);
       name=$("#streamName_"+uid).val();
-      url=$("#url_"+uid).val();
+      aes_url=$("#url_"+uid).val();
       volume=$("#volume_"+uid).val();
       title="Edit stream<br>" + name;
     }
@@ -192,7 +192,7 @@ echo <<<EOF
       uid=0;
       active=true;
       name="";
-      url="";
+      aes_url="";
       volume=100;
       title="Add new stream";
     }
@@ -207,7 +207,7 @@ echo <<<EOF
         <input type='text' style="width:100%" id='EstreamName' value='` + name + `'></input>
         <br><br>
         Stream URL<br>
-        <input type='text' style="width:100%" id='Eurl' value='` + url + `'></input>
+        <input type='text' style="width:100%" id='Eurl' value='` + aes_url + `'></input>
         <br><br>
         Volume<br>
         <input id="Evolume" type="range" min="0" max="100" value="100" step="1" oninput="EvolumeChange(this.value);" onchange="EvolumeChange(this.value);" />
