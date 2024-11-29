@@ -90,6 +90,8 @@ echo <<<EOF
         <tbody id="fahStreams">
         </tbody>
       </table>
+      <br>
+      The Miller Lights has graciously offered their holiday streaming service for use by the community.  Just add https://radio.themillerlights.com:8000/radio.mp3 as the stream url to use it<br>
       <a href='https://www.internet-radio.com/stations/christmas/#' target='_blank'>https://www.internet-radio.com/stations/christmas/#</a> has lots of radio stations (see help for instructions)</i>
     </form>
   </div>
