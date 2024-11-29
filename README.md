@@ -4,6 +4,7 @@ This plugin allows you to configure music sources for playback typically outside
 
 ### Known limitations / Gotchas
   - You must add at least a 1 second pause entry in the playlist after the fpp-after-hours-stop.php script is called (failure to do this could cause your show to halt especially if using a USB sound card).
+  - If you installed the plugin before November 27th 2024 the plugin update button from the plugin manager will not work.  The issue has been corrected now but you must uninstall the plugin and reinstall it to properly bring in the new version.
   
 ### Getting Started
 1. Get sound working through fpp (ensure proper sound card is selected, go to Status/Control and then Status Page and click volume + and then volume - once (this ensures the volume is set to match fpp as there are sometimes inconsistencies)
