@@ -295,7 +295,7 @@ class fppAfterHours {
     file_put_contents($this->directories['scriptDirectory'].'fpp-after-hours-stop.php',file_get_contents($this->directories['pluginDirectory'].'templates/fpp-after-hours-stopTemplate.php'));
     $this->checkMakeScriptsExecutable();
   }
-  /*public function checkMakeScriptsExecutable() {
+  public function checkMakeScriptsExecutable() {
     $fileList=array("fpp-after-hours-start.php","fpp-after-hours-stop.php");
     foreach ($fileList as $f) {
       if (!is_executable($this->directories['scriptDirectory'].$f)) {
@@ -303,7 +303,7 @@ class fppAfterHours {
       }
     }
   }
-  */
+  
   public function refreshScriptsOkayFlag() {
     @$this->scriptsOkay=false;
     if ($this->checkScriptsLoaded() == true)
@@ -519,7 +519,7 @@ class fppAfterHours {
     return false;
   }
   
-  public function checkMakeScriptsExecutable() {
+  /*public function checkMakeMasterScriptsExecutable() {
     $fileList=array("commands/fpp-after-hours-start.php","commands/fpp-after-hours-stop.php","scripts/fpp_uninstall.sh");
     foreach ($fileList as $f) {
       if (!is_executable($this->directories['pluginDirectory'].$f)) {
@@ -527,6 +527,7 @@ class fppAfterHours {
       }
     }
   }
+  */
 
   public function checkGitUpdates() {
     exec("cd /home/fpp/media/plugins/fpp-after-hours && sudo git fetch --all && sudo git checkout",$ret);
