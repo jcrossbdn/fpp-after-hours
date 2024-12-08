@@ -293,11 +293,21 @@ class fppAfterHours {
   public function updateScripts() {
     file_put_contents($this->directories['scriptDirectory'].'fpp-after-hours-start.php',file_get_contents($this->directories['pluginDirectory'].'templates/fpp-after-hours-startTemplate.php'));
     file_put_contents($this->directories['scriptDirectory'].'fpp-after-hours-stop.php',file_get_contents($this->directories['pluginDirectory'].'templates/fpp-after-hours-stopTemplate.php'));
+    $this->checkMakeScriptsExecutable();
+  }
+  public function checkMakeScriptsExecutable() {
+    $fileList=array("fpp-after-hours-start.php","fpp-after-hours-stop.php");
+    foreach ($fileList as $f) {
+      if (!is_executable($this->directories['scriptDirectory'].$f)) {
+        exec("sudo chmod +x ".$this->directories['scriptDirectory'].$f);
+      }
+    }
   }
   public function refreshScriptsOkayFlag() {
     @$this->scriptsOkay=false;
     if ($this->checkScriptsLoaded() == true)
       if ($this->checkScriptsChanged() == false)
+	$this->checkMakeScriptsExecutable();
         $this->scriptsOkay=true;
   }
   
