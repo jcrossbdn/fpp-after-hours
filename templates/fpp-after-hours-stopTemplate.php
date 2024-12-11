@@ -1,5 +1,8 @@
 <?php
-//file_put_contents('/home/fpp/media/plugindata/teststop',print_r($argv,true),FILE_APPEND);
+if (isset($argv[1]) && strtolower($argv[1])=="fade") {
+  $argv[1]=$argv[2] ?? 0;
+  $argv[2]=$argv[3] ?? 30;
+}
 if (isset($argv[1])) $argv[1]=preg_replace('/\D/','',$argv[1]); //fade in over seconds
 if (isset($argv[2])) $argv[2]=preg_replace('/\D/','',$argv[2]); //start at volume percentage
 if (isset($argv[1]) && is_numeric($argv[1])) {
@@ -17,7 +20,6 @@ if (isset($argv[1]) && is_numeric($argv[1])) {
         $os=floor(microtime(true)*1000); //operation start time
         if (!isset($vol)) $volStr="";
         else $volStr = " $vol";
-        //file_put_contents('/home/fpp/media/plugindata/teststop',"$os - mpc volume$volStr\n",FILE_APPEND);
         exec("mpc volume$volStr",$volRet);
         $volRet=array_reverse($volRet);
         foreach ($volRet as $v) {
@@ -28,15 +30,13 @@ if (isset($argv[1]) && is_numeric($argv[1])) {
             }
         }
         $vol=intval($vol);
-        
+
         $nowtime=floor(microtime(true)*1000);
         $cmdOffset=$nowtime-$os; //how long did it take to run the function above
-        
-        $remain=($mustCompleteBy - $cmdOffset - $nowtime); //used to calculate delay
-        
-        $volStepsRemain = ($vol-$minVolume) / 5;
 
-        //file_put_contents('/home/fpp/media/plugindata/teststop',"$os - minuteSecond ".date("i:s"). " - remain $remain - volStepsRemain $volStepsRemain\n",FILE_APPEND);
+        $remain=($mustCompleteBy - $cmdOffset - $nowtime); //used to calculate delay
+
+        $volStepsRemain = ($vol-$minVolume) / 5;
 
         if ($volStepsRemain > 0) (($delay=$remain / $volStepsRemain) - 100);
         else break; //prevents divide by zero
