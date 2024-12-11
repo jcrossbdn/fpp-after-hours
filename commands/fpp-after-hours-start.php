@@ -29,12 +29,14 @@ if ($fah->config !== false) {
             $fah->setCurrentInternetRadioHost($pickme[$rnd]['url']);
 
             //handle command line switches for fade in
-            if (isset($argv[1]) && $argv[1]=='fade' && isset($argv[2]) && is_numeric($argv[2])) {
-              if (isset($argv[3]) && is_numeric($argv[3])) $vol=$argv[3]; //set the start fade volume level
+            if (isset($argv[1])) $argv[1]=preg_replace('/\D/','',$argv[1]); //fade in over seconds
+            if (isset($argv[2])) $argv[2]=preg_replace('/\D/','',$argv[2]); //start at volume percentage
+            if (isset($argv[1]) && $argv[1] > 0) {
+              if (isset($argv[2]) && is_numeric($argv[2])) $vol=intval($argv[2]); //set the start fade volume level
               else $vol=0;
               exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} && mpc volume {$vol} && mpc play");
               $startTime=floor(microtime(true)*1000);
-              $mustCompleteBy=($startTime + ((intval($argv[2]) * 1000) - 1000)); //must finish before this timestamp
+              $mustCompleteBy=($startTime + ((intval($argv[1]) * 1000) - 1000)); //must finish before this timestamp
               $maxVol=($pickme[$rnd]['volume'] != '-' ? intval($pickme[$rnd]['volume']) : 100);
               do {
                   $os=floor(microtime(true)*1000); //operation start time
@@ -48,14 +50,14 @@ if ($fah->config !== false) {
                       }
                   }
                   $vol=intval($vol);
-                  
+
                   $nowtime=floor(microtime(true)*1000);
                   $cmdOffset=$nowtime-$os; //how long did it take to run the function above
-                  
+
                   $remain=($mustCompleteBy - $cmdOffset - $nowtime); //used to calculate delay
-                  
+
                   $volStepsRemain = ($maxVol - $vol) / 5;
-          
+
                   if ($volStepsRemain > 0) (($delay=$remain / $volStepsRemain) - 100);
                   else break; //prevents divide by zero
                   if ($delay <= 0 || $remain <= 100+$cmdOffset) break; //add more time for the final volume command at the end of this loop in case command takes longer this run
@@ -64,11 +66,11 @@ if ($fah->config !== false) {
               } while ($vol <= $maxVol);
               exec("mpc volume $maxVol");
             }
-            
+
             else { //just start mpd to desired end volume
-              exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& mpc volume {$pickme[$rnd]['volume']} " : "")." && mpc play");
-            }     
-            
+              exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& mpc volume {$pickme[$rnd]['volume']} " : "")." && mpc pla
+            }
+
             break;
           }
         }
@@ -76,7 +78,7 @@ if ($fah->config !== false) {
           error_log("fpp-after-hours... ERROR: No reachable streams could be started");
         }
 
-        if ($runFromCronMonitorStream===true) sleep(10); //wait 10 seconds before testing the stream for errors (only when run from the monitorStream script)
+        if (isset($runFromCronMonitorStream) && $runFromCronMonitorStream===true) sleep(10); //wait 10 seconds before testing the stream for errors (only when run from the monitorStream script)
         $npd=$fah->getNowPlayingDetail();
         if (trim($npd->error) != '') {
           if (strstr($npd->error,"Failed to open \"default detected output\" (sndio);") !== false) {
