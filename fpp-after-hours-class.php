@@ -307,9 +307,10 @@ class fppAfterHours {
   public function refreshScriptsOkayFlag() {
     @$this->scriptsOkay=false;
     if ($this->checkScriptsLoaded() == true)
-      if ($this->checkScriptsChanged() == false)
+      if ($this->checkScriptsChanged() == false) {
 	$this->checkMakeScriptsExecutable();
         $this->scriptsOkay=true;
+      }
   }
   
   
