@@ -1,8 +1,9 @@
 #!/usr/bin/php
 <?php
-//file_put_contents('/home/fpp/media/plugindata/teststop',print_r($argv,true),FILE_APPEND);
-if (isset($argv[1]) && $argv[1]=='fade' && isset($argv[2]) && is_numeric($argv[2])) {
-    if (isset($argv[3]) && is_numeric($argv[3])) $minVolume=$argv[3]; //set the minimum fade volume level
+if (isset($argv[1])) $argv[1]=preg_replace('/\D/','',$argv[1]); //fade in over seconds
+if (isset($argv[2])) $argv[2]=preg_replace('/\D/','',$argv[2]); //start at volume percentage
+if (isset($argv[1]) && isset($argv[2])) {
+    if (isset($argv[2]) && is_numeric($argv[2])) $minVolume=$argv[2]; //set the minimum fade volume level
     else $minVolume=0;
     sleep(1); //no idea why fade out script does not work through fpp scheduler without this delay
     require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
@@ -11,7 +12,7 @@ if (isset($argv[1]) && $argv[1]=='fade' && isset($argv[2]) && is_numeric($argv[2
     $fah->setCurrentInternetRadioHost();
     $startTime=floor(microtime(true)*1000);
 
-    $mustCompleteBy=($startTime + ((intval($argv[2]) * 1000) - 1000)); //must finish before this timestamp
+    $mustCompleteBy=($startTime + ((intval($argv[1]) * 1000) - 1000)); //must finish before this timestamp
     do {
         $os=floor(microtime(true)*1000); //operation start time
         if (!isset($vol)) $volStr="";
@@ -27,15 +28,13 @@ if (isset($argv[1]) && $argv[1]=='fade' && isset($argv[2]) && is_numeric($argv[2
             }
         }
         $vol=intval($vol);
-        
+
         $nowtime=floor(microtime(true)*1000);
         $cmdOffset=$nowtime-$os; //how long did it take to run the function above
-        
-        $remain=($mustCompleteBy - $cmdOffset - $nowtime); //used to calculate delay
-        
-        $volStepsRemain = ($vol-$minVolume) / 5;
 
-        //file_put_contents('/home/fpp/media/plugindata/teststop',"$os - minuteSecond ".date("i:s"). " - remain $remain - volStepsRemain $volStepsRemain\n",FILE_APPEND);
+        $remain=($mustCompleteBy - $cmdOffset - $nowtime); //used to calculate delay
+
+        $volStepsRemain = ($vol-$minVolume) / 5;
 
         if ($volStepsRemain > 0) (($delay=$remain / $volStepsRemain) - 100);
         else break; //prevents divide by zero
