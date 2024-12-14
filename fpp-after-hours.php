@@ -534,7 +534,7 @@ echo <<<EOF
     $.ajax({
       type: "POST",
       dataType: "json",
-      url: "/api/plugin/fpp-after-hours/updates,
+      url: "/api/plugin/fpp-after-hours/updates",
       success: function(data) {
         if (data.Status=="OK") {
           if (data.updatesAvailable != 0) {
