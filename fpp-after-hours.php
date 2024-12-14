@@ -45,6 +45,9 @@ echo <<<EOF
 </div>
 
 <div id="fahReady" class="container show">
+  <div id="updateAvailable" class="hidden">
+    An update is available <a href='/plugins.php'>(Click here to go to plugin manager)</a>
+  </div>
   <div class="row" style="min-height:200px;">
     <div class="col-sm-12 col-md-8 offset-md-2">
       <div id="fahNowPlaying" class="alert alert-secondary" style="text-align:center; color:black" role="alert">No music is playing</div>
@@ -525,6 +528,19 @@ echo <<<EOF
       url: "/api/plugin/fpp-after-hours/updateScripts",
       success: function(data) {
         console.log(data);
+      }
+    });
+
+    $.ajax({
+      type: "POST",
+      dataType: "json",
+      url: "/api/plugin/fpp-after-hours/updates,
+      success: function(data) {
+        if (data.Status=="OK") {
+          if (data.updatesAvailable != 0) {
+            $("#updateAvailable").show();
+          }
+        }
       }
     });
   });
