@@ -46,7 +46,7 @@ echo <<<EOF
 
 <div id="fahReady" class="container show">
   <div id="updateAvailable" class="hidden">
-    An update is available <a href='/plugins.php'>(Click here to go to plugin manager)</a>
+    An update is available <a href='/plugins.php'>(Click here to go to plugin manager)</a><br><br>
   </div>
   <div class="row" style="min-height:200px;">
     <div class="col-sm-12 col-md-8 offset-md-2">
