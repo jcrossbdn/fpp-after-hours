@@ -188,7 +188,7 @@ class fppAfterHours {
 
   public function installDependenciesStream() {
     DisableOutputBuffering();
-    system("sudo apt update && sudo apt -y install mpd mpc",$ret);
+    system("sudo apt-get update && sudo apt-get -y install mpd mpc",$ret);
     echo "\n\nfpp-after-hours additional software installation complete";
     while (@ob_end_flush());
     flush();
