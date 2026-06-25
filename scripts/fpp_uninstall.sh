@@ -5,7 +5,7 @@ rm -rf /etc/cron.d/fpp-after-hours-cron
 sleep 1
 
 echo "Removing mpd and mpc"
-apt -y remove --purge mpd mpc
+apt-get remove -y --purge mpd mpc
 
 echo "Removing plugin datafiles (current config file will remain)"
 rm -rf /home/fpp/media/plugindata/fpp-after-hours-streamRunning
