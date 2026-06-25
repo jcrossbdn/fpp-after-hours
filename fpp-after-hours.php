@@ -34,7 +34,7 @@ echo <<<EOF
     <div class="col-sm-12 col-md-8 offset-md-2">
         <div id="serviceStatus" class="alert alert-danger" style="text-align:center; color:black" role="alert">
           <h3>! ! ! Additional Software Must Be Installed ! ! !</h3>
-          <p>will run <i>sudo apt update && sudo apt -y install mpd mpc</i></p>
+          <p>will run <i>sudo apt-get update && sudo apt-get -y install mpd mpc</i></p>
           <button id="fahInstallDepends" class="buttons btn-rounded" onClick="fahDependsInstall()">
             <i class='fas fa-fw fa-play'></i>
             <span class="playerControlButton-text">Install</span>
