@@ -183,14 +183,14 @@ class fppAfterHours {
   }
   public function installDependencies() {
     //exec('sudo apt-get -y update && sudo apt-get -y install mpd mpc',$out);
-	exec('sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confold" install mpd mpc',$out); //issue 44
+	exec('sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=\"--force-confold\" install mpd mpc',$out); //issue 44
     return $out;
   }
 
   public function installDependenciesStream() {
     DisableOutputBuffering();
     //system("sudo apt-get update && sudo apt-get -y install mpd mpc",$ret);
-	system("sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confold" install mpd mpc",$ret); //issue 44
+	system("sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=\"--force-confold\" install mpd mpc",$ret); //issue 44
     echo "\n\nfpp-after-hours additional software installation complete";
     while (@ob_end_flush());
     flush();
