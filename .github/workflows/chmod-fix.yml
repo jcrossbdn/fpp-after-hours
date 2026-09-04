@@ -1,0 +1,15 @@
+name: Fix executable bit
+on: workflow_dispatch
+
+jobs:
+  chmod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git update-index --chmod=+x scripts/fpp_install.sh
+          git update-index --chmod=+x scripts/fpp_uninstall.sh
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git commit -m "Make fpp_install.sh executable"
+          git push
