@@ -71,7 +71,7 @@
         {
             "minFPPVersion": "10.0",
             "maxFPPVersion": "0",
-            "branch": "master",
+            "branch": "v10",
             "sha": "",
             "dependencies": {
                 "packages": [
