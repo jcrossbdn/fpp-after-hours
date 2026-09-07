@@ -506,7 +506,7 @@ class fppAfterHours {
                 exec("sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
             exec("sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
             unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
-            exec("sudo systemctl restart mpd");
+            exec("sudo systemctl restart mpd 2>/dev/null");
             $this->waitForMPDReady();
             return true;
         }
@@ -536,7 +536,7 @@ class fppAfterHours {
                         exec("sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
                     exec("sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
                     unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
-                    exec("sudo systemctl restart mpd");
+                    exec("sudo systemctl restart mpd 2>/dev/null");
                     $this->waitForMPDReady();
                     unset($mpdConfig);
                     unset($newConfig);
@@ -550,10 +550,11 @@ class fppAfterHours {
   }
 
   private function waitForMPDReady($maxAttempts = 15) {
+    exec("sudo systemctl reset-failed mpd.service 2>/dev/null"); // clear any stale failed-job state before checking
     for ($i = 0; $i < $maxAttempts; $i++) {
         exec("mpc status 2>&1", $mpcTest, $mpcRet);
         if ($mpcRet === 0) return true;
-        usleep(300000); // 300ms
+        usleep(300000);
         unset($mpcTest);
     }
     error_log("fpp-after-hours... WARNING: mpd did not become ready within ".($maxAttempts*0.3)."s of restart");
