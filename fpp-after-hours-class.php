@@ -153,16 +153,17 @@ class fppAfterHours {
       //$this->setMusicRunningStatus(false);
     }
   }
+  
   public function installDependencies() {
-    //exec('sudo apt-get -y update && sudo apt-get -y install mpd mpc',$out);
-	exec('sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=\"--force-confold\" install mpd mpc',$out); //issue 44
+    exec('sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=\"--force-confold\" install mpd mpc',$out);
+    $this->repairMPDConfig();
     return $out;
   }
 
   public function installDependenciesStream() {
     DisableOutputBuffering();
-    //system("sudo apt-get update && sudo apt-get -y install mpd mpc",$ret);
-	system("sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=\"--force-confold\" install mpd mpc",$ret); //issue 44
+    system("sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=\"--force-confold\" install mpd mpc",$ret);
+    $this->repairMPDConfig();
     echo "\n\nfpp-after-hours additional software installation complete";
     while (@ob_end_flush());
     flush();
@@ -415,17 +416,38 @@ class fppAfterHours {
   }
   
   public function checkForMPDFormat() {
-    if ($this->isPipewireMode()) return false; //pipewire uses a static output, no per-card format enforcement needed
-    $config=self::getMPDConfig();
-    if (isset($config->outputEntries) && count($config->outputEntries)) {
-        foreach ($config->outputEntries as $entry) {
-            if (!isset($entry->format)) {
-                self::updateMPDConfig(true);
-                exec("sudo systemctl restart mpd.service");
-                return true;
-            }
+    $config = self::getMPDConfig();
+    if ($this->isPipewireMode()) {
+        // No pulse output block at all means mpd.conf was reset - full repair needed
+        if ($config->outputBlock === "" || stripos($config->outputBlock, '"pulse"') === false) {
+            self::repairMPDConfig();
+            return true;
+        }
+        return false;
+    }
+    if (!isset($config->outputEntries) || !count($config->outputEntries)) {
+        // No output blocks at all under ALSA mode either - same reset scenario
+        self::repairMPDConfig();
+        return true;
+    }
+    foreach ($config->outputEntries as $entry) {
+        if (!isset($entry->format)) {
+            self::repairMPDConfig();
+            return true;
         }
     }
+  }
+
+  public function repairMPDConfig() {
+    // A package (re)install of mpd with force-confnew (or any other mechanism)
+    // can silently replace /etc/mpd.conf with the stock default, undoing:
+    //   1. the user/group commenting (needed since systemd runs mpd as fpp)
+    //   2. ownership of mpd's data directory
+    //   3. the audio_output block itself
+    // Re-apply all three together so a reset never leaves mpd half-broken.
+    exec("sudo sed -i -E 's/^[[:space:]]*(user[[:space:]])/#\\1/; s/^[[:space:]]*(group[[:space:]])/#\\1/' /etc/mpd.conf");
+    exec("sudo chown -R fpp:fpp /var/lib/mpd");
+    return $this->updateMPDConfig(true);
   }
   
   public function getFPPActiveSoundCardName() {
@@ -465,10 +487,9 @@ class fppAfterHours {
         $fppUid = trim(shell_exec("id -u fpp"));
         $pulseSocket = "/run/user/{$fppUid}/pulse/native";
 
-        // FPP tracks its own active PipeWire sink directly in settings - use it as-is
         $settingsContent = file_get_contents('/home/fpp/media/settings');
         preg_match('/^PipeWireSinkName = "(.*?)"\n/m', $settingsContent, $sinkMatch);
-        $sinkName = isset($sinkMatch[1]) && $sinkMatch[1] !== "" ? $sinkMatch[1] : "fpp_alsa_headphones"; // safe fallback
+        $sinkName = isset($sinkMatch[1]) && $sinkMatch[1] !== "" ? $sinkMatch[1] : "fpp_alsa_headphones";
 
         $mpdConfig = $this->getMPDConfig();
         if ($mpdConfig === false) return false;
@@ -482,16 +503,11 @@ class fppAfterHours {
 
         if (file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig", $newConfig)) {
             if (!file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf"))
-                exec("yes | sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
-            exec("yes | sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
-            //unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
+                exec("sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
+            exec("sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
+            unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
             exec("sudo systemctl restart mpd");
-            for ($i = 0; $i < 15; $i++) {
-                exec("mpc status 2>&1", $mpcTest, $mpcRet);
-                if ($mpcRet === 0) break;
-                usleep(300000);
-                unset($mpcTest);
-            }
+            $this->waitForMPDReady();
             return true;
         }
         return false;
@@ -517,16 +533,11 @@ class fppAfterHours {
                 $newConfig=$audio_output."\n\n".trim($mpdConfig->noOutputs)."\n";
                 if (file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig",$newConfig)) {
                     if (!file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf"))
-                        exec("yes | sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
-                    exec("yes | sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
-                    //unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
+                        exec("sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
+                    exec("sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
+                    unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
                     exec("sudo systemctl restart mpd");
-                    for ($i = 0; $i < 15; $i++) {
-                        exec("mpc status 2>&1", $mpcTest, $mpcRet);
-                        if ($mpcRet === 0) break;
-                        usleep(300000);
-                        unset($mpcTest);
-                    }
+                    $this->waitForMPDReady();
                     unset($mpdConfig);
                     unset($newConfig);
                     if ($this->checkForNewSoundCard()===false) return true;
@@ -535,6 +546,17 @@ class fppAfterHours {
             }
         }
     }
+    return false;
+  }
+
+  private function waitForMPDReady($maxAttempts = 15) {
+    for ($i = 0; $i < $maxAttempts; $i++) {
+        exec("mpc status 2>&1", $mpcTest, $mpcRet);
+        if ($mpcRet === 0) return true;
+        usleep(300000); // 300ms
+        unset($mpcTest);
+    }
+    error_log("fpp-after-hours... WARNING: mpd did not become ready within ".($maxAttempts*0.3)."s of restart");
     return false;
   }
 
