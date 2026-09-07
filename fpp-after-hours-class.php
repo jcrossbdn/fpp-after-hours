@@ -14,24 +14,13 @@ class fppAfterHours {
   public function __construct($uiRequest=true) {
     $this->pluginName='fpp-after-hours';
     
-    //if (!isset($GLOBALS['settings']['pluginDirectory'])) { //if class is called from outside fpp ui, load the variables we need from fpp config.php
-    //  $skipJSsettings=true; //we don't want the javascript from the config.php include file
-    //  include '/opt/fpp/www/config.php';
-    //}
-    //else global $settings;
-    
-    //global $pluginDirectory;
     $this->directories=array('pluginDirectory'=>"/home/fpp/media/plugins/$this->pluginName/",
-                       //'pluginDirectory'=>$pluginDirectory."/{$this->pluginName}",
                        'pluginDataDirectory'=>"/home/fpp/media/plugindata/",
                        'scriptDirectory'=>"/home/fpp/media/scripts/",
                        'crondDirectory'=>"/etc/cron.d/",
                        'playlistDirectory'=>"/home/fpp/media/playlists/"
                        );
 
-    //$this->databaseOpen();
-    //$this->configureDatabase();
-    
     $this->loadConfigFile();
     
     $this->checkDependenciesLoaded();
@@ -41,20 +30,8 @@ class fppAfterHours {
     $this->refreshCronOkayFlag();
     $this->refreshScriptsOkayFlag();
     $this->checkForMPDFormat(); //do this only so we don't have to update startup script to perform the format and bitrate mpd.conf update - 2019-11-06
-    //$this->checkMakeScriptsExecutable();  //should no longer be required as execute bit should now be properly configured in git
   }
 
-  private function databaseOpen($write=false) {
-    if ($write) $this->dbh=new SQLite3($this->directories['pluginDataDirectory']."fpp-after-hours-database.sqlite3", SQLITE3_OPEN_READWRITE);
-    else $this->dbh=new SQLite3($this->directories['pluginDataDirectory']."fpp-after-hours-database.sqlite3", SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READ);
-  }
-
-  private function configureDatabase() {
-    //https://www.sqlite.org/lang.html
-    //https://stackoverflow.com/questions/1601151/how-do-i-check-in-sqlite-whether-a-table-exists
-    var_dump($this->dbh->query('show databases;'));
-  }
-  
   public function saveConfigFile() {
     if (isset($this->config['streams']) && count($this->config['streams'])) { //perform a sort on the stream names to keep them alphabetical ( !! lower and upper case are sorted independently with ksort !! )
       $streams=$this->config['streams'];
@@ -72,11 +49,6 @@ class fppAfterHours {
   }
  
   public function loadConfigFile() {
-    /*if (file_exists($this->directories['pluginDataDirectory'].$this->pluginName."-config.json")) 
-      $this->config=json_decode(file_get_contents(($this->directories['pluginDataDirectory'].$this->pluginName."-config.json")));
-    else 
-      $this->config=false;
-    */
     if (!file_exists($this->directories['pluginDataDirectory'].$this->pluginName."-config.json")) 
       $this->saveConfigFile();
 
@@ -317,37 +289,24 @@ class fppAfterHours {
   
   
   public function getSystemSoundCards() {
-    //exec("sudo aplay -l | grep '^card' | sed -e 's/^card //' -e 's/:[^\[]*\[/:/' -e 's/\].*\[.*\].*//' | uniq",$cards);
-    /*if (count($cards)) {
-      foreach ($cards as $name) {
-        $pn=explode(":",$name);
-        if (isset($pn[0]) && isset($pn[1])) {
-          $cardName='';
-          for ($inta=1; $inta<count($pn); $inta++) $cardName.=$pn[$inta].":";
-          @$out[$pn[0]]->cardName=substr($cardName,0,-1); //remove trailing :
-        }        
-      }
-      return $out;
-    }
-    return false;
-    */
     exec("sudo aplay -l",$cards);
     $cardStr="";
     if (count($cards)) {
-      foreach ($cards as $card) $cardStr.=$card."\n";
+        foreach ($cards as $card) $cardStr.=$card."\n";
     }
-    
     $out=array();
-    preg_match_all('/^card (.*?):(.*?\[(.*?)\])/m',$cardStr,$cardDetail);
+    preg_match_all('/^card (.*?): (\S+) \[(.*?)\]/m',$cardStr,$cardDetail);
     if (count($cardDetail[0])) {
-      foreach ($cardDetail[0] as $key=>$null) {
-        $cardNo=$cardDetail[1][$key];
-        $cardName=$cardDetail[3][$key];
-        @$out[$cardNo]['cardName']=$cardName;
-      }
-      return $out;
+        foreach ($cardDetail[0] as $key=>$null) {
+            $cardNo=$cardDetail[1][$key];
+            $shortId=$cardDetail[2][$key];
+            $cardName=$cardDetail[3][$key];
+            @$out[$cardNo]['cardName']=$cardName;
+            @$out[$cardNo]['shortId']=$shortId;
+        }
+        return $out;
     }
-    return false;    
+    return false;
   }
 
   public function getMPCHash() {
@@ -399,23 +358,27 @@ class fppAfterHours {
     return json_decode(json_encode($out));
   }
   
-  public function getSystemSoundCardToMPD() { //returns all system sound card names and t/f whether they are loaded into mpd
+  public function getSystemSoundCardToMPD() {
+    if ($this->isPipewireMode()) {
+        return json_decode(json_encode(array('PipeWire'=>true))); //always "present" — no per-card tracking under pipewire
+    }
     exec("mpc outputs",$arr);
     if (count($arr)) {
-      $system=$this->getSystemSoundCards();
-      if ($system===false) return false; //no sound cards exist on system so we don't care what mpd knows about
-      foreach ($system as $index) $out[$index['cardName']]=false; //default to not in mpd
-      foreach ($system as $index) {
-        foreach ($arr as $a) {
-          if (strstr($a,"({$index['cardName']})")!==false) $out[$index['cardName']]=true;
+        $system=$this->getSystemSoundCards();
+        if ($system===false) return false;
+        foreach ($system as $index) $out[$index['cardName']]=false;
+        foreach ($system as $index) {
+            foreach ($arr as $a) {
+                if (strstr($a,"({$index['cardName']})")!==false) $out[$index['cardName']]=true;
+            }
         }
-      }
     }
     return json_decode(json_encode($out));
   }
   
   public function checkForRemovedSoundCards() {
-		$mppd=$this->getMPDConfig();
+	  if ($this->isPipewireMode()) return false;	
+    $mppd=$this->getMPDConfig();
     $out=false;
     if (isset($mppd->outputEntries) && count($mppd->outputEntries)) {
       $system=$this->getSystemSoundCards();
@@ -451,86 +414,129 @@ class fppAfterHours {
     return false;
   }
   
-  public function checkForMPDFormat() { //reloads the config if an old mpd config exists that does not contain format and bitrate variables in the audio_output definitions
+  public function checkForMPDFormat() {
+    if ($this->isPipewireMode()) return false; //pipewire uses a static output, no per-card format enforcement needed
     $config=self::getMPDConfig();
-		if (isset($config->outputEntries) && count($config->outputEntries)) {
-			foreach ($config->outputEntries as $entry) {
-	    	if (!isset($entry->format))  { //format does not exist so force update the config file
-					self::updateMPDConfig(true); //forceable update the mpd config file
-					exec("sudo systemctl restart mpd.service");
-					return true;
-				}
-	    }
+    if (isset($config->outputEntries) && count($config->outputEntries)) {
+        foreach ($config->outputEntries as $entry) {
+            if (!isset($entry->format)) {
+                self::updateMPDConfig(true);
+                exec("sudo systemctl restart mpd.service");
+                return true;
+            }
+        }
     }
   }
   
   public function getFPPActiveSoundCardName() {
-    //get active sound card id from /home/fpp/media/settings
     preg_match('/^AudioOutput = \"(.*?)\"\n/sim', file_get_contents('/home/fpp/media/settings'), $fppOutputArr);
     if (isset($fppOutputArr) && count($fppOutputArr)) {
-      $fppOutput=intval($fppOutputArr[1]);
-      $systemCards=$this->getSystemSoundCards();
-      if ($systemCards !== false && isset($systemCards[$fppOutput])) return $systemCards[$fppOutput]['cardName'];      
+        $fppOutputRaw = trim($fppOutputArr[1]);
+        $systemCards = $this->getSystemSoundCards();
+        if ($systemCards === false) return false;
+
+        if (ctype_digit($fppOutputRaw)) {
+            // Older FPP versions stored a numeric ALSA card index
+            $idx = intval($fppOutputRaw);
+            if (isset($systemCards[$idx])) return $systemCards[$idx]['cardName'];
+            return false;
+        }
+
+        // Current FPP versions store the ALSA short-ID (e.g. "Device", "Headphones")
+        foreach ($systemCards as $card) {
+            if (isset($card['shortId']) && $card['shortId'] === $fppOutputRaw) {
+                return $card['cardName'];
+            }
+        }
+    }
+    return false;
+  }
+
+  public function isPipewireMode() {
+    $markerFile = $this->directories['pluginDataDirectory']."fpp-after-hours-audioMode";
+    if (file_exists($markerFile)) {
+        return trim(file_get_contents($markerFile)) === 'pipewire';
     }
     return false;
   }
   
-  public function updateMPDConfig($forceUpdate=false) { //updates mpd config file if it is required
+  public function updateMPDConfig($forceUpdate=false) {
+    if ($this->isPipewireMode()) {
+        $fppUid = trim(shell_exec("id -u fpp"));
+        $pulseSocket = "/run/user/{$fppUid}/pulse/native";
+
+        // FPP tracks its own active PipeWire sink directly in settings - use it as-is
+        $settingsContent = file_get_contents('/home/fpp/media/settings');
+        preg_match('/^PipeWireSinkName = "(.*?)"\n/m', $settingsContent, $sinkMatch);
+        $sinkName = isset($sinkMatch[1]) && $sinkMatch[1] !== "" ? $sinkMatch[1] : "fpp_alsa_headphones"; // safe fallback
+
+        $mpdConfig = $this->getMPDConfig();
+        if ($mpdConfig === false) return false;
+
+        $currentSink = "";
+        if (preg_match('/sink\s+"(.*?)"/', $mpdConfig->outputBlock, $sm)) $currentSink = $sm[1];
+        if ($currentSink === $sinkName && !$forceUpdate) return true;
+
+        $audio_output = "audio_output {\n\ttype\t\"pulse\"\n\tname\t\"FPP PipeWire Output\"\n\tserver\t\"$pulseSocket\"\n\tsink\t\"$sinkName\"\n\tmixer_type\t\"software\"\n\tformat\t\"44100:16:2\"\n}\n";
+        $newConfig = $audio_output."\n\n".trim($mpdConfig->noOutputs)."\n";
+
+        if (file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig", $newConfig)) {
+            if (!file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf"))
+                exec("yes | sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
+            exec("yes | sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
+            //unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
+            exec("sudo systemctl restart mpd");
+            for ($i = 0; $i < 15; $i++) {
+                exec("mpc status 2>&1", $mpcTest, $mpcRet);
+                if ($mpcRet === 0) break;
+                usleep(300000);
+                unset($mpcTest);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // ---- original ALSA logic, unchanged ----
     $cardToMPD=$this->getSystemSoundCardToMPD();
     if ($cardToMPD !== false && is_object($cardToMPD)) {
-      $requiresUpdate=false;
-      foreach ($cardToMPD as $val) {
-        if ($val===false) {
-          $requiresUpdate=true;
-          break;
+        $requiresUpdate=false;
+        foreach ($cardToMPD as $val) {
+            if ($val===false) { $requiresUpdate=true; break; }
         }
-      }
-      if ($this->checkForRemovedSoundCards() !== false) $requiresUpdate=true; //remove uninstalled sound cards from mpd config file
-      if ($requiresUpdate || $forceUpdate) {
-        $sysCards=$this->getSystemSoundCards();
-        if (count($sysCards)) {
-          $audio_output="";
-          foreach ($sysCards as $cardNo=>$data1) {
-            $type="alsa";
-            $audio_output.="audio_output {\n\ttype\t\"$type\"\n\tname\t\"{$data1['cardName']}\"\n\tdevice\t\"hw:$cardNo,0\"\n\tmixer_type\t\"software\"\n\tformat\t\"44100:16:2\"\n\tbitrate\t\"128\"\n}\n";
-          }
-          $mpdConfig=$this->getMPDConfig();
-          if ($mpdConfig===false) return false;
-          $newConfig=$audio_output."\n\n".trim($mpdConfig->noOutputs)."\n";
-
-					if (file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig",$newConfig)) {
-            if (!file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf")) exec("yes | sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf"); //make a backup of this file
-            exec("yes | sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
-            unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
-	          /*if (!$forceUpdate) {  
-	            exec("sudo mpd --kill");
-	            sleep(3);
-	            exec("sudo mpd");
-	            sleep(3);
-	          }
-            */
-            exec("sudo systemctl restart mpd");
-	          unset($mpdConfig);
-	          unset($newConfig);
-	          
-	          if ($this->checkForNewSoundCard()===false) return true; //update successful
-	          return false;
-	        }
+        if ($this->checkForRemovedSoundCards() !== false) $requiresUpdate=true;
+        if ($requiresUpdate || $forceUpdate) {
+            $sysCards=$this->getSystemSoundCards();
+            if (count($sysCards)) {
+                $audio_output="";
+                foreach ($sysCards as $cardNo=>$data1) {
+                    $audio_output.="audio_output {\n\ttype\t\"alsa\"\n\tname\t\"{$data1['cardName']}\"\n\tdevice\t\"hw:$cardNo,0\"\n\tmixer_type\t\"software\"\n\tformat\t\"44100:16:2\"\n\tbitrate\t\"128\"\n}\n";
+                }
+                $mpdConfig=$this->getMPDConfig();
+                if ($mpdConfig===false) return false;
+                $newConfig=$audio_output."\n\n".trim($mpdConfig->noOutputs)."\n";
+                if (file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig",$newConfig)) {
+                    if (!file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf"))
+                        exec("yes | sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
+                    exec("yes | sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
+                    //unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
+                    exec("sudo systemctl restart mpd");
+                    for ($i = 0; $i < 15; $i++) {
+                        exec("mpc status 2>&1", $mpcTest, $mpcRet);
+                        if ($mpcRet === 0) break;
+                        usleep(300000);
+                        unset($mpcTest);
+                    }
+                    unset($mpdConfig);
+                    unset($newConfig);
+                    if ($this->checkForNewSoundCard()===false) return true;
+                    return false;
+                }
+            }
         }
-      }
     }
     return false;
   }
-  
-  /*public function checkMakeMasterScriptsExecutable() {
-    $fileList=array("commands/fpp-after-hours-start.php","commands/fpp-after-hours-stop.php","scripts/fpp_uninstall.sh");
-    foreach ($fileList as $f) {
-      if (!is_executable($this->directories['pluginDirectory'].$f)) {
-        exec("sudo chmod +x ".$this->directories['pluginDirectory'].$f);
-      }
-    }
-  }
-  */
 
   public function checkGitUpdates() {
     exec("cd /home/fpp/media/plugins/fpp-after-hours && sudo git fetch --all && sudo git checkout",$ret);
@@ -542,33 +548,6 @@ class fppAfterHours {
     exec(($hard===true ? "cd /home/fpp/media/plugins/fpp-after-hours && sudo git reset --hard && ":"")."/opt/fpp/scripts/update_plugin fpp-after-hours",$ret);
     return $ret;
   }
-  
-  /*public function getDebugData() {
-    $out['fpp-after-hoursConfig']=$this->config;    
-    //$schedules=array_map('str_getcsv',file('/home/fpp/media/schedule'));
-    $schedules=
-    if ($schedules===false) return false;
-    $d = dir($this->directories['playlistDirectory']);
-    while (false !== ($entry = $d->read())) {
-      if ($entry=='.' || $entry=='..') continue;
-      $pathInfo=pathinfo($this->directories['playlistDirectory'].$entry);
-      if (strtolower($pathInfo['extension'])=='json') {
-        $obj=json_decode(file_get_contents($this->directories['playlistDirectory'].$entry));
-        if ($obj !== null) {
-          foreach ($schedules as $sched) {
-            if ($sched[1]==$obj->name) $obj->schedule=implode(",",$sched);
-          }
-        }
-        $out[]=$obj;
-      }
-      else {
-        $out[]="non json playlist file:<br>".file_get_contents($this->directories['playlistDirectory'].$entry);
-      }
-    }
-    $out['allSchedules']=print_r(file_get_contents('/home/fpp/media/schedule'),true);
-    return $out;
-  }
-  */
   
   public function pingInternetRadio($host) {
     $purl=parse_url($host);
