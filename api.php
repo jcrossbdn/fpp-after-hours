@@ -155,14 +155,18 @@ function fah_getStreamPing() {
 // GET /api/plugin/fpp-after-hours/start
 function fah_start() {
     $fah=new fppAfterHours();
+    ob_start();
     include $fah->directories['scriptDirectory'].'fpp-after-hours-start.php';
+    ob_end_clean(); // discard any stray text output (e.g. shebang line) before we build our own JSON response
     return json(array('status'=>true));
 }
 
 // GET /api/plugin/fpp-after-hours/stop
 function fah_stop() {
     $fah=new fppAfterHours();
+    ob_start();
     include $fah->directories['scriptDirectory'].'fpp-after-hours-stop.php';
+    ob_end_clean(); // discard any stray text output (e.g. shebang line) before we build our own JSON response
     return json(array('status'=>true));
 }
 
