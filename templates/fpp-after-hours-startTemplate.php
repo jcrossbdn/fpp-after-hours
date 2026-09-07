@@ -1,15 +1,13 @@
+#!/usr/bin/php
 <?php
 require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
 $fah=new fppAfterHours();
-if (isset($argv[1]) && strtolower($argv[1])=="fade") {
-  $argv[1]=$argv[2] ?? 0;
-  $argv[2]=$argv[3] ?? 30;
-}
 
 if ($fah->config !== false) {
   if ($fah->checkForNewSoundCard()===true) $fah->updateMPDConfig(); //there is a new sound card, add it to mpd config
   if ($fah->checkForRemovedSoundCards() !== false) $fah->updateMPDConfig(); //there is a sound card in mpd that is no longer in the system, remove it from mpd config
   $soundCardName=$fah->getFPPActiveSoundCardName();
+  $isPipewire = $fah->isPipewireMode();
 
   $streamPick=array();
   if ($fah->config['activeSource']=='internet') {
@@ -37,13 +35,18 @@ if ($fah->config !== false) {
             if (isset($argv[1]) && $argv[1] > 0) {
               if (isset($argv[2]) && is_numeric($argv[2])) $vol=intval($argv[2]); //set the start fade volume level
               else $vol=0;
-              exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} && mpc volume {$vol} && mpc play");
+              //exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} && mpc volume {$vol} && mpc play");
+              exec("mpc clear ".($soundCardName!==false && !$isPipewire ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} && mpc volume {$vol} && mpc play");
               $startTime=floor(microtime(true)*1000);
               $mustCompleteBy=($startTime + ((intval($argv[1]) * 1000) - 1000)); //must finish before this timestamp
               $maxVol=($pickme[$rnd]['volume'] != '-' ? intval($pickme[$rnd]['volume']) : 100);
               do {
                   $os=floor(microtime(true)*1000); //operation start time
-                  exec("mpc volume $vol",$volRet);
+                  //exec("mpc volume $vol",$volRet);
+                  exec("mpc volume",$volRet);
+                  $vol = isset($volRet[0]) ? str_replace('volume: ',"",$volRet[0]) : "0";
+                  $vol=str_replace('%',"",$vol);
+                  if (!is_numeric($vol)) $vol = "0"; // covers "n/a" when no output is connected yet
                   $volRet=array_reverse($volRet);
                   foreach ($volRet as $v) {
                       if (substr($v,0,7)=='volume:') {
@@ -71,7 +74,8 @@ if ($fah->config !== false) {
             }
 
             else { //just start mpd to desired end volume
-              exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& mpc volume {$pickme[$rnd]['volume']} " : "")." && mpc play");
+              //exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& mpc volume {$pickme[$rnd]['volume']} " : "")." && mpc play");
+              exec("mpc clear ".($soundCardName!==false && !$isPipewire ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& mpc volume {$pickme[$rnd]['volume']} " : "")." && mpc play");
             }
 
             break;
@@ -84,10 +88,11 @@ if ($fah->config !== false) {
         if (isset($runFromCronMonitorStream) && $runFromCronMonitorStream===true) sleep(10); //wait 10 seconds before testing the stream for errors (only when run from the monitorStream script)
         $npd=$fah->getNowPlayingDetail();
         if (trim($npd->error) != '') {
-          if (strstr($npd->error,"Failed to open \"default detected output\" (sndio);") !== false) {
-            //mpd likely needs a restart
-            error_log("fpp-after-hours... MPD ERROR (Failed to open \"default detected output\" (sndio).  Attempting mpd config rebuild and restart");
-            $fah->updateMPDConfig(true);
+          if (strstr($npd->error,"Failed to open \"default detected output\" (sndio);") !== false
+              || strstr($npd->error,"Connection refused") !== false
+              || strstr($npd->error,"Failed to connect") !== false) {
+              error_log("fpp-after-hours... MPD ERROR ({$npd->error}). Attempting mpd config rebuild and restart");
+              $fah->updateMPDConfig(true);
           }
           else {
             error_log("fpp-after-hours... ERROR from active stream: ".$npd->error);
