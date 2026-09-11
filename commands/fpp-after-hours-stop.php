@@ -18,7 +18,7 @@ if (isset($argv[1]) && isset($argv[2])) {
         if (!isset($vol)) $volStr="";
         else $volStr = " $vol";
         //file_put_contents('/home/fpp/media/plugindata/teststop',"$os - mpc volume$volStr\n",FILE_APPEND);
-        exec("{$fah->mpcPath} volume$volStr",$volRet);
+        exec("{$fah->mpcPath} volume $volStr",$volRet);
         $volRet=array_reverse($volRet);
         foreach ($volRet as $v) {
             if (substr($v,0,7)=='volume:') {
