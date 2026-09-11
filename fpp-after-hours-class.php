@@ -10,6 +10,7 @@ class fppAfterHours {
   public $cronOkay; //cron.d file not loaded or changed (boolean)
   public $scriptsOkay; //fpp scripts not loaded or changed (boolean)
   private $dbh;
+  public $mpcPath;
 
   public function __construct($uiRequest=true) {
     $this->pluginName='fpp-after-hours';
@@ -22,14 +23,16 @@ class fppAfterHours {
                        );
 
     $this->loadConfigFile();
+
+    $this->mpcPath=trim(shell_exec('which mpc'));
     
-    $this->checkDependenciesLoaded();
+    if ($uiRequest) $this->checkDependenciesLoaded(); //added for issue 46 so cronMonitorStream does not restart mpd and flood the logs 2026-09-10
     $this->checkIsMusicRunning();
     $this->checkMusicShouldBeRunning();
     $this->getSavedShowVolume();
     $this->refreshCronOkayFlag();
     $this->refreshScriptsOkayFlag();
-    $this->checkForMPDFormat(); //do this only so we don't have to update startup script to perform the format and bitrate mpd.conf update - 2019-11-06
+    if ($uiRequest) $this->checkForMPDFormat(); //do this only so we don't have to update startup script to perform the format and bitrate mpd.conf update - 2019-11-06
   }
 
   public function saveConfigFile() {
@@ -283,7 +286,7 @@ class fppAfterHours {
     @$this->scriptsOkay=false;
     if ($this->checkScriptsLoaded() == true)
       if ($this->checkScriptsChanged() == false) {
-	$this->checkMakeScriptsExecutable();
+	      $this->checkMakeScriptsExecutable();
         $this->scriptsOkay=true;
       }
   }
