@@ -22,7 +22,7 @@ if ($fah->config !== false) {
           ksort($streamPick);
           foreach ($streamPick as $spId=>$pickme) {
             $rnd=rand(1,count($pickme))-1;
-            exec("mpc volume",$volRet);
+            exec("{$fah->mpcPath} volume",$volRet);
             $vol=str_replace('volume: ',"",$volRet[0]);
             $vol=str_replace('%',"",$vol);
             if (!$fah->musicShouldBeRunning) $fah->setShowVolume($vol); //don't change the show volume if stream is already active (or should be active)
@@ -36,14 +36,14 @@ if ($fah->config !== false) {
               if (isset($argv[2]) && is_numeric($argv[2])) $vol=intval($argv[2]); //set the start fade volume level
               else $vol=0;
               //exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} && mpc volume {$vol} && mpc play");
-              exec("mpc clear ".($soundCardName!==false && !$isPipewire ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} && mpc volume {$vol} && mpc play");
+              exec("{$fah->mpcPath} clear ".($soundCardName!==false && !$isPipewire ? "&& {$fah->mpcPath} enable only \"$soundCardName\" " : "")."&& {$fah->mpcPath} add {$pickme[$rnd]['url']} && {$fah->mpcPath} volume {$vol} && {$fah->mpcPath} play");
               $startTime=floor(microtime(true)*1000);
               $mustCompleteBy=($startTime + ((intval($argv[1]) * 1000) - 1000)); //must finish before this timestamp
               $maxVol=($pickme[$rnd]['volume'] != '-' ? intval($pickme[$rnd]['volume']) : 100);
               do {
                   $os=floor(microtime(true)*1000); //operation start time
                   //exec("mpc volume $vol",$volRet);
-                  exec("mpc volume",$volRet);
+                  exec("{$fah->mpcPath} volume",$volRet);
                   $vol = isset($volRet[0]) ? str_replace('volume: ',"",$volRet[0]) : "0";
                   $vol=str_replace('%',"",$vol);
                   if (!is_numeric($vol)) $vol = "0"; // covers "n/a" when no output is connected yet
@@ -70,12 +70,12 @@ if ($fah->config !== false) {
                   $vol+=5;
                   usleep($delay*1000);
               } while ($vol <= $maxVol);
-              exec("mpc volume $maxVol");
+              exec("{$fah->mpcPath} volume $maxVol");
             }
 
             else { //just start mpd to desired end volume
               //exec("mpc clear ".($soundCardName!==false ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& mpc volume {$pickme[$rnd]['volume']} " : "")." && mpc play");
-              exec("mpc clear ".($soundCardName!==false && !$isPipewire ? "&& mpc enable only \"$soundCardName\" " : "")."&& mpc add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& mpc volume {$pickme[$rnd]['volume']} " : "")." && mpc play");
+              exec("{$fah->mpcPath} clear ".($soundCardName!==false && !$isPipewire ? "&& {$fah->mpcPath} enable only \"$soundCardName\" " : "")."&& {$fah->mpcPath} add {$pickme[$rnd]['url']} ".($pickme[$rnd]['volume'] != '-' ? "&& {$fah->mpcPath} volume {$pickme[$rnd]['volume']} " : "")." && {$fah->mpcPath} play");
             }
 
             break;
