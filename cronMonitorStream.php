@@ -14,7 +14,7 @@ function testForLockedStream() {
       $fah->setMPCHash($obj);
     }
     elseif ($md5 == $obj->md5 && time() - $obj->lastChangeTimestamp >= 10) { //attempt to restart this failed stream
-      exec("mpc stop && mpc clear");
+      exec("{$fah->mpcPath} stop && {$fah->mpcPath} clear");
       $fah->setCurrentInternetRadioHost();
       if (file_exists($fah->directories['scriptDirectory'].'/fpp-after-hours-start.php')) {
         include $fah->directories['scriptDirectory'].'/fpp-after-hours-start.php';
@@ -42,7 +42,7 @@ if ($fah->musicShouldBeRunning) {
         $host=$fah->getCurrentInternetRadioHost();
         if (trim($host) != '') {
           if ($fah->pingInternetRadio($host)===false) { //stop this broken stream and attempt to restart or start a new one
-            exec("mpc stop && mpc clear");
+            exec("{$fah->mpcPath} stop && {$fah->mpcPath} clear");
             $fah->setCurrentInternetRadioHost();
             if (file_exists($fah->directories['scriptDirectory'].'/fpp-after-hours-start.php')) {
               include $fah->directories['scriptDirectory'].'/fpp-after-hours-start.php';
@@ -56,6 +56,6 @@ if ($fah->musicShouldBeRunning) {
   testForLockedStream();
 }
 else { //should not be running
-  exec("mpc stop && mpc clear"); //send kill command just in case
+  exec("{$fah->mpcPath} stop && {$fah->mpcPath} clear"); //send kill command just in case
 }
 ?>
