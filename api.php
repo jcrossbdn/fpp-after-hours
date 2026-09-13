@@ -1,5 +1,7 @@
 <?php
-error_reporting(0);
+// Keep fatal errors visible in the PHP log; only hide the noisy notice-level
+// output that would otherwise corrupt the JSON responses.
+error_reporting(E_ALL & ~(E_NOTICE | E_WARNING | E_DEPRECATED));
 ini_set('display_errors',false);
 require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
 

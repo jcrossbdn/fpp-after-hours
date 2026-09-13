@@ -560,16 +560,12 @@ echo <<<EOF
       backdrop: "static",
       footer: "",
       buttons: {
-        "Close and Restart FPPD": {
+        "Close": {
           id: 'fahDependsCloseDialogButton',
           click: function() {
-            $.ajax({
-              type: "GET",
-              dataType: "json",
-              url: "/api/system/fppd/restart",
-              success: function(data) {
-              }
-            });
+            // Flag the restart instead of restarting fppd here, so FPP can do
+            // it safely between sequences rather than killing a running show.
+            SetRestartFlag(1);
             CloseModalDialog("fahDependsInstall"); location.reload();
           },
           disabled: true,
