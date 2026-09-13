@@ -1,4 +1,17 @@
 <?php
+// FPP's common.php gives us ReadSettingFromFile() so we never parse the settings
+// file ourselves. It is already loaded when we run inside an FPP page or API
+// call; the command/cron scripts run standalone, so load it here for them.
+$skipJSsettings = 1;
+include_once('/opt/fpp/www/common.php');
+
+// The command scripts and the cron monitor run outside Apache, so PHP's
+// error_log() (and any PHP warnings/fatals) would otherwise only go to stderr.
+// Send them to FPP's per-plugin log so they show in the log viewer/Support Zip.
+if (PHP_SAPI === 'cli' && isset($settings['logDirectory'])) {
+    ini_set('error_log', $settings['logDirectory'].'/plugin-fpp-after-hours.log');
+}
+
 class fppAfterHours {
   public $dependenciesAreLoaded; //are mpd and mpc installed on this system
   public $musicIsRunning; //is mpc responding with a playing message
@@ -454,9 +467,9 @@ class fppAfterHours {
   }
   
   public function getFPPActiveSoundCardName() {
-    preg_match('/^AudioOutput = \"(.*?)\"\n/sim', file_get_contents('/home/fpp/media/settings'), $fppOutputArr);
-    if (isset($fppOutputArr) && count($fppOutputArr)) {
-        $fppOutputRaw = trim($fppOutputArr[1]);
+    $fppOutputRaw = ReadSettingFromFile('AudioOutput');
+    if ($fppOutputRaw !== false && $fppOutputRaw !== '') {
+        $fppOutputRaw = trim($fppOutputRaw);
         $systemCards = $this->getSystemSoundCards();
         if ($systemCards === false) return false;
 
@@ -490,9 +503,8 @@ class fppAfterHours {
         $fppUid = trim(shell_exec("id -u fpp"));
         $pulseSocket = "/run/user/{$fppUid}/pulse/native";
 
-        $settingsContent = file_get_contents('/home/fpp/media/settings');
-        preg_match('/^PipeWireSinkName = "(.*?)"\n/m', $settingsContent, $sinkMatch);
-        $sinkName = isset($sinkMatch[1]) && $sinkMatch[1] !== "" ? $sinkMatch[1] : "fpp_alsa_headphones";
+        $sinkName = ReadSettingFromFile('PipeWireSinkName');
+        if ($sinkName === false || $sinkName === "") $sinkName = "fpp_alsa_headphones";
 
         $mpdConfig = $this->getMPDConfig();
         if ($mpdConfig === false) return false;

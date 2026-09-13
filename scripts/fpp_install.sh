@@ -1,8 +1,21 @@
 #!/bin/bash
+set -e
+
+# FPP helpers (setSetting, LOGDIR, ...) - the Plugin Manager passes FPPDIR in.
+. ${FPPDIR:-/opt/fpp}/scripts/common
+
+# Per-plugin log used by the cron monitor and the command scripts. Create it
+# owned by fpp up front: fppd runs the command scripts as root, and a
+# root-created log would be unwritable by the fpp-user cron job.
+PLUGIN_LOG=${LOGDIR:-/home/fpp/media/logs}/plugin-fpp-after-hours.log
+touch "$PLUGIN_LOG"
+chown fpp:fpp "$PLUGIN_LOG"
+chmod 664 "$PLUGIN_LOG"
+
 # Ensure dpkg auto-resolves conffile prompts with the maintainer's version
 # so unattended dependency installs (mpd/mpc) never block on stdin.
-sudo mkdir -p /etc/dpkg/dpkg.cfg.d
-sudo tee /etc/dpkg/dpkg.cfg.d/fpp-after-hours >/dev/null <<'EOF'
+mkdir -p /etc/dpkg/dpkg.cfg.d
+tee /etc/dpkg/dpkg.cfg.d/fpp-after-hours >/dev/null <<'EOF'
 force-confdef
 force-confnew
 EOF
@@ -18,10 +31,10 @@ Environment="PIPEWIRE_RUNTIME_DIR=/run/user/${FPP_UID}"
 EOF
 
 # mpd.conf may still specify user/group, which conflicts with the systemd override
-sed -i -E 's/^[[:space:]]*(user[[:space:]])/#\1/; s/^[[:space:]]*(group[[:space:]])/#\1/' /etc/mpd.conf
+[ -f /etc/mpd.conf ] && sed -i -E 's/^[[:space:]]*(user[[:space:]])/#\1/; s/^[[:space:]]*(group[[:space:]])/#\1/' /etc/mpd.conf
 
 # Fix ownership of mpd's data/state directory for the fpp user
-chown -R fpp:fpp /var/lib/mpd
+[ -d /var/lib/mpd ] && chown -R fpp:fpp /var/lib/mpd
 
 # Override the packaged tmpfiles rule so /run/mpd is owned by fpp on every boot
 mkdir -p /etc/tmpfiles.d
@@ -38,14 +51,14 @@ sleep 1   # give logind a moment to create /run/user/${FPP_UID} before we use it
 # we decide which audio mode to record - order matters here (see notes below).
 PIPEWIRE_READY=false
 if command -v pipewire >/dev/null 2>&1; then
-    sudo -u fpp XDG_RUNTIME_DIR=/run/user/${FPP_UID} systemctl --user unmask \
-        pipewire.socket pipewire-pulse.socket pipewire.service pipewire-pulse.service wireplumber.service 2>/dev/null
-    sudo -u fpp XDG_RUNTIME_DIR=/run/user/${FPP_UID} systemctl --user enable --now pipewire.socket pipewire-pulse.socket 2>/dev/null
-    sudo -u fpp XDG_RUNTIME_DIR=/run/user/${FPP_UID} systemctl --user enable --now pipewire wireplumber pipewire-pulse 2>/dev/null
+    runuser -u fpp -- env XDG_RUNTIME_DIR=/run/user/${FPP_UID} systemctl --user unmask \
+        pipewire.socket pipewire-pulse.socket pipewire.service pipewire-pulse.service wireplumber.service 2>/dev/null || true
+    runuser -u fpp -- env XDG_RUNTIME_DIR=/run/user/${FPP_UID} systemctl --user enable --now pipewire.socket pipewire-pulse.socket 2>/dev/null || true
+    runuser -u fpp -- env XDG_RUNTIME_DIR=/run/user/${FPP_UID} systemctl --user enable --now pipewire wireplumber pipewire-pulse 2>/dev/null || true
     sleep 2
 
     # Confirm the pulse-compatible socket is actually live, not just that units exist
-    if sudo -u fpp XDG_RUNTIME_DIR=/run/user/${FPP_UID} pactl info >/dev/null 2>&1; then
+    if runuser -u fpp -- env XDG_RUNTIME_DIR=/run/user/${FPP_UID} pactl info >/dev/null 2>&1; then
         PIPEWIRE_READY=true
     fi
 fi
@@ -61,11 +74,11 @@ fi
 chown fpp:fpp /home/fpp/media/plugindata/fpp-after-hours-audioMode
 
 # kill any stale mpd instance holding the port before restarting
-pkill -9 mpd 2>/dev/null
+pkill -9 mpd 2>/dev/null || true
 sleep 1
 systemctl daemon-reload
-systemctl reset-failed mpd.service 2>/dev/null
-systemctl restart mpd
+systemctl reset-failed mpd.service 2>/dev/null || true
+systemctl restart mpd || true   # readiness loop below reports the failure
 
 # Wait for mpd to actually respond, not just report active-in-systemd
 MPD_READY=false
@@ -80,3 +93,7 @@ done
 if [ "$MPD_READY" != true ]; then
     echo "WARNING: mpd failed to start or is not responding. Check 'systemctl status mpd' and 'journalctl -u mpd'." >&2
 fi
+
+# commands/descriptions.json is only read when fppd starts, so ask the Plugin
+# Manager to show the restart banner rather than restarting fppd ourselves.
+setSetting restartFlag 1
