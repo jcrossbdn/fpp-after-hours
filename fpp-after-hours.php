@@ -32,7 +32,7 @@ echo <<<EOF
 <div id="fahDependencies" class="hidden">
   <div class="row">
     <div class="col-sm-12 col-md-8 offset-md-2">
-        <div id="serviceStatus" class="alert alert-danger" style="text-align:center; color:black" role="alert">
+        <div id="serviceStatus" class="alert alert-danger" style="text-align:center" role="alert">
           <h3>! ! ! Additional Software Must Be Installed ! ! !</h3>
           <p>will run <i>sudo apt-get update && sudo apt-get -y install mpd mpc</i></p>
           <button id="fahInstallDepends" class="buttons btn-rounded" onClick="fahDependsInstall()">
@@ -50,7 +50,7 @@ echo <<<EOF
   </div>
   <div class="row" style="min-height:200px;">
     <div class="col-sm-12 col-md-8 offset-md-2">
-      <div id="fahNowPlaying" class="alert alert-secondary" style="text-align:center; color:black" role="alert">No music is playing</div>
+      <div id="fahNowPlaying" class="alert alert-secondary" style="text-align:center" role="alert">No music is playing</div>
     </div>
   </div>
   <div class="row col-sm-12 col-md-8 offset-md-2 offset-lg-4">
