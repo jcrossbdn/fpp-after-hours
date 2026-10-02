@@ -430,6 +430,12 @@ class fppAfterHours {
             self::repairMPDConfig();
             return true;
         }
+        // Pulse block present but pointed at the wrong PipeWire instance (e.g. the
+        // per-user session used before issue #49) - rewrite it to FPP's instance
+        if ($this->getMPDPulseServer($config->outputBlock) !== self::FPP_PULSE_SOCKET) {
+            self::repairMPDConfig();
+            return true;
+        }
         return false;
     }
     if (!isset($config->outputEntries) || !count($config->outputEntries)) {
@@ -481,6 +487,20 @@ class fppAfterHours {
     return false;
   }
 
+  // FPP 10+ runs its own system-level PipeWire instance (fpp-pipewire.service,
+  // fpp-wireplumber.service, fpp-pipewire-pulse.service) on this private socket.
+  // MPD must join that graph rather than any per-user session: ALSA hw devices are
+  // exclusive, so a second WirePlumber opening the card blocks all FPP audio (#49).
+  const FPP_PULSE_SOCKET = '/run/pipewire-fpp/pulse/native';
+
+  // The sink fppd itself plays to in FPP 10 (combine-stream group "Default").
+  const FPP_DEFAULT_SINK = 'fpp_group_default';
+
+  private function getMPDPulseServer($outputBlock) {
+    if (preg_match('/^\s*server\s+"(.*?)"/m', $outputBlock, $m)) return $m[1];
+    return "";
+  }
+
   public function isPipewireMode() {
     $markerFile = $this->directories['pluginDataDirectory']."fpp-after-hours-audioMode";
     if (file_exists($markerFile)) {
@@ -491,18 +511,21 @@ class fppAfterHours {
   
   public function updateMPDConfig($forceUpdate=false) {
     if ($this->isPipewireMode()) {
-        $fppUid = trim(shell_exec("id -u fpp"));
-        $pulseSocket = "/run/user/{$fppUid}/pulse/native";
+        $pulseSocket = self::FPP_PULSE_SOCKET;
 
+        // Follow whatever sink fppd is using so MPD mixes into the same output
+        // group as show audio (and honours the user's Advanced-mode routing).
         $sinkName = ReadSettingFromFile('PipeWireSinkName');
-        if ($sinkName === false || $sinkName === "") $sinkName = "fpp_alsa_headphones";
+        if ($sinkName === false || trim($sinkName) === "") $sinkName = self::FPP_DEFAULT_SINK;
+        $sinkName = trim($sinkName);
 
         $mpdConfig = $this->getMPDConfig();
         if ($mpdConfig === false) return false;
 
         $currentSink = "";
         if (preg_match('/sink\s+"(.*?)"/', $mpdConfig->outputBlock, $sm)) $currentSink = $sm[1];
-        if ($currentSink === $sinkName && !$forceUpdate) return true;
+        $currentServer = $this->getMPDPulseServer($mpdConfig->outputBlock);
+        if ($currentSink === $sinkName && $currentServer === $pulseSocket && !$forceUpdate) return true;
 
         $audio_output = "audio_output {\n\ttype\t\"pulse\"\n\tname\t\"FPP PipeWire Output\"\n\tserver\t\"$pulseSocket\"\n\tsink\t\"$sinkName\"\n\tmixer_type\t\"software\"\n\tformat\t\"44100:16:2\"\n}\n";
         $newConfig = $audio_output."\n\n".trim($mpdConfig->noOutputs)."\n";
