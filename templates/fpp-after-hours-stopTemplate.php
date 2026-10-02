@@ -48,7 +48,11 @@ if (isset($argv[1]) && is_numeric($argv[1])) {
     exec("{$fah->mpcPath} stop && {$fah->mpcPath} clear".($vol !== false ? " && {$fah->mpcPath} volume $vol" : ""));
 }
 else {
-    exec("{$fah->mpcPath} stop"); //release the sound card as fast as possible
+    // Stop playback as fast as possible, before the (slower) class load.
+    // $fah does not exist yet here, so resolve mpc directly - previously this
+    // interpolated an undefined $fah->mpcPath, ran " stop" and did nothing.
+    $mpc = trim(shell_exec('which mpc'));
+    if ($mpc !== '') exec("$mpc stop");
     require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
     $fah=new fppAfterHours();
     $fah->setMusicRunningStatus(false);
