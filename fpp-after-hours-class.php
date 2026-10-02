@@ -147,27 +147,18 @@ class fppAfterHours {
   }
   
   public function checkDependenciesLoaded() {
-    exec('mpc version',$ret);
-    if (strstr(implode(",",$ret)," version: ")) $this->dependenciesAreLoaded=true;
-    else  {
-      $this->dependenciesAreLoaded=false;
+    $installed = trim(shell_exec('command -v mpd')) !== '' && trim(shell_exec('command -v mpc')) !== '';
+    if (!$installed) { $this->dependenciesAreLoaded = false; $this->mpdState = 'missing'; return; }
 
-      /*
-      //Github issue 19 - https://github.com/jcrossbdn/fpp-after-hours/issues/19
-      exec("mpc",$mpc);
-      exec("mpc version",$mpcVersion);
-      file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-debugLog19.log","Github Issue: 19\nDate: ".date("Y-m-d H:i:s")."\nmpc output:".print_r($mpc,true)."\nmpc version output:".print_r($mpcVersion,true)."\n---------\n",FILE_APPEND);
-      exec("mpc stop && mpc clear"); //attempt to force mpd off when there is a failure finding mpd in the plugin
-      */
-      //if (file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-debugLog19.log")) unlink($this->directories['pluginDataDirectory']."fpp-after-hours-debugLog19.log");
-      exec('sudo systemctl stop mpd');
-      exec('sudo systemctl start mpd');
-      exec('mpc version',$ret);
-      if (strstr(implode(",",$ret)," version: ")) $this->dependenciesAreLoaded=true;
-      // ** END Github issue 19
-
-      //$this->setMusicRunningStatus(false);
+    exec('mpc version 2>&1', $ret);
+    if (strstr(implode(",", $ret), " version: ") === false) {
+        exec('sudo systemctl restart mpd');
+        $this->waitForMPDReady();
+        $ret = [];
+        exec('mpc version 2>&1', $ret);
     }
+    $this->dependenciesAreLoaded = true;   // packages are present
+    $this->mpdState = strstr(implode(",", $ret), " version: ") ? 'running' : 'not_running';
   }
   
   public function installDependencies() {
