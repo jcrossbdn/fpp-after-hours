@@ -147,27 +147,18 @@ class fppAfterHours {
   }
   
   public function checkDependenciesLoaded() {
-    exec('mpc version',$ret);
-    if (strstr(implode(",",$ret)," version: ")) $this->dependenciesAreLoaded=true;
-    else  {
-      $this->dependenciesAreLoaded=false;
+    $installed = trim(shell_exec('command -v mpd')) !== '' && trim(shell_exec('command -v mpc')) !== '';
+    if (!$installed) { $this->dependenciesAreLoaded = false; $this->mpdState = 'missing'; return; }
 
-      /*
-      //Github issue 19 - https://github.com/jcrossbdn/fpp-after-hours/issues/19
-      exec("mpc",$mpc);
-      exec("mpc version",$mpcVersion);
-      file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-debugLog19.log","Github Issue: 19\nDate: ".date("Y-m-d H:i:s")."\nmpc output:".print_r($mpc,true)."\nmpc version output:".print_r($mpcVersion,true)."\n---------\n",FILE_APPEND);
-      exec("mpc stop && mpc clear"); //attempt to force mpd off when there is a failure finding mpd in the plugin
-      */
-      //if (file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-debugLog19.log")) unlink($this->directories['pluginDataDirectory']."fpp-after-hours-debugLog19.log");
-      exec('sudo systemctl stop mpd');
-      exec('sudo systemctl start mpd');
-      exec('mpc version',$ret);
-      if (strstr(implode(",",$ret)," version: ")) $this->dependenciesAreLoaded=true;
-      // ** END Github issue 19
-
-      //$this->setMusicRunningStatus(false);
+    exec('mpc version 2>&1', $ret);
+    if (strstr(implode(",", $ret), " version: ") === false) {
+        exec('sudo systemctl restart mpd');
+        $this->waitForMPDReady();
+        $ret = [];
+        exec('mpc version 2>&1', $ret);
     }
+    $this->dependenciesAreLoaded = true;   // packages are present
+    $this->mpdState = strstr(implode(",", $ret), " version: ") ? 'running' : 'not_running';
   }
   
   public function installDependencies() {
@@ -439,6 +430,12 @@ class fppAfterHours {
             self::repairMPDConfig();
             return true;
         }
+        // Pulse block present but pointed at the wrong PipeWire instance (e.g. the
+        // per-user session used before issue #49) - rewrite it to FPP's instance
+        if ($this->getMPDPulseServer($config->outputBlock) !== self::FPP_PULSE_SOCKET) {
+            self::repairMPDConfig();
+            return true;
+        }
         return false;
     }
     if (!isset($config->outputEntries) || !count($config->outputEntries)) {
@@ -490,6 +487,23 @@ class fppAfterHours {
     return false;
   }
 
+  // FPP 10+ runs its own system-level PipeWire instance (fpp-pipewire.service,
+  // fpp-wireplumber.service, fpp-pipewire-pulse.service). MPD must join that
+  // graph rather than any per-user session: ALSA hw devices are exclusive, so a
+  // second WirePlumber opening the card blocks all FPP audio (#49).
+  // MPD runs as fpp and cannot use FPP's own socket (/run/pipewire-fpp/pulse is
+  // reset to root-only 0700 by FPP's root pactl calls), so fpp_install.sh has
+  // FPP's pulse server also listen on this plugin-managed socket.
+  const FPP_PULSE_SOCKET = '/run/fpp-after-hours/pulse-native';
+
+  // The sink fppd itself plays to in FPP 10 (combine-stream group "Default").
+  const FPP_DEFAULT_SINK = 'fpp_group_default';
+
+  private function getMPDPulseServer($outputBlock) {
+    if (preg_match('/^\s*server\s+"(.*?)"/m', $outputBlock, $m)) return $m[1];
+    return "";
+  }
+
   public function isPipewireMode() {
     $markerFile = $this->directories['pluginDataDirectory']."fpp-after-hours-audioMode";
     if (file_exists($markerFile)) {
@@ -500,25 +514,28 @@ class fppAfterHours {
   
   public function updateMPDConfig($forceUpdate=false) {
     if ($this->isPipewireMode()) {
-        $fppUid = trim(shell_exec("id -u fpp"));
-        $pulseSocket = "/run/user/{$fppUid}/pulse/native";
+        $pulseSocket = self::FPP_PULSE_SOCKET;
 
+        // Follow whatever sink fppd is using so MPD mixes into the same output
+        // group as show audio (and honours the user's Advanced-mode routing).
         $sinkName = ReadSettingFromFile('PipeWireSinkName');
-        if ($sinkName === false || $sinkName === "") $sinkName = "fpp_alsa_headphones";
+        if ($sinkName === false || trim($sinkName) === "") $sinkName = self::FPP_DEFAULT_SINK;
+        $sinkName = trim($sinkName);
 
         $mpdConfig = $this->getMPDConfig();
         if ($mpdConfig === false) return false;
 
         $currentSink = "";
         if (preg_match('/sink\s+"(.*?)"/', $mpdConfig->outputBlock, $sm)) $currentSink = $sm[1];
-        if ($currentSink === $sinkName && !$forceUpdate) return true;
+        $currentServer = $this->getMPDPulseServer($mpdConfig->outputBlock);
+        if ($currentSink === $sinkName && $currentServer === $pulseSocket && !$forceUpdate) return true;
 
         $audio_output = "audio_output {\n\ttype\t\"pulse\"\n\tname\t\"FPP PipeWire Output\"\n\tserver\t\"$pulseSocket\"\n\tsink\t\"$sinkName\"\n\tmixer_type\t\"software\"\n\tformat\t\"44100:16:2\"\n}\n";
         $newConfig = $audio_output."\n\n".trim($mpdConfig->noOutputs)."\n";
 
         if (file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig", $newConfig)) {
             if (!file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf"))
-                exec("sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
+                exec("cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
             exec("sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
             unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
             exec("sudo systemctl restart mpd 2>/dev/null");
