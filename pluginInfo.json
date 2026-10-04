@@ -2,11 +2,47 @@
     "repoName": "fpp-after-hours",
     "name": "After Hours Music Player Plugin",
     "author": "Jason Cross (jcross)",
-    "description": "This plugin allows you to configure music sources for playback typically outside of show hours.",
+    "description": "Plays internet radio streams you choose (for example outside show hours) through FPP's audio output. The player connects only to the stream addresses you add, to check they are reachable and to play them.",
     "homeURL": "https://github.com/jcrossbdn/fpp-after-hours",
     "srcURL": "https://github.com/jcrossbdn/fpp-after-hours.git",
     "bugURL": "https://github.com/jcrossbdn/fpp-after-hours/issues",
+    "iconURL": "https://raw.githubusercontent.com/jcrossbdn/fpp-after-hours/master/icon.png",
     "allowUpdates": 1,
+    "releaseNotesStyle": "gitHistory",
+    "privacy": {
+        "summary": "Connects only to the internet radio stream addresses you add, to check they respond and to play them. Nothing else leaves the player.",
+        "sends": [
+            {
+                "to": "the internet radio stream addresses you add",
+                "what": "a normal request to fetch or check the stream",
+                "why": "to play the stream and detect when it has stopped",
+                "alwaysOn": false
+            }
+        ],
+        "collects": [],
+        "sensors": [],
+        "remoteAccess": "none",
+        "systemChanges": [
+            {
+                "kind": "service",
+                "what": "Adds fpp-after-hours-pulse.service, a PulseAudio socket for mpd on FPP's PipeWire, started with fpp-pipewire.service"
+            },
+            {
+                "kind": "service",
+                "what": "Runs mpd as the fpp user (systemd drop-in), edits /etc/mpd.conf, and enables mpd.service"
+            },
+            {
+                "kind": "service",
+                "what": "Adds /etc/cron.d/fpp-after-hours-cron, a once-a-minute check that restarts a stalled stream"
+            },
+            {
+                "kind": "privilege",
+                "what": "Gives /var/lib/mpd and /var/log/mpd to the fpp user (returned to mpd on uninstall)"
+            }
+        ],
+        "closedCode": false,
+        "other": "Uninstall removes everything above and restores the packaged /etc/mpd.conf. Streams and settings in plugindata are kept. The plugin's API (start, stop, volume, stream list) can be called by anyone who can reach FPP."
+    },
     "versions": [
         {
             "minFPPVersion": "3.0",
@@ -76,7 +112,8 @@
             "dependencies": {
                 "packages": [
                     "mpd",
-                    "mpc"
+                    "mpc",
+                    "pipewire-pulse"
                 ]
             }
         }

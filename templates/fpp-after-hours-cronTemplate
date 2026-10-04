@@ -1,2 +1,5 @@
-# fpp-after-hours stream monitoring script
-* * * * * fpp /usr/bin/php /home/fpp/media/plugins/fpp-after-hours/cronMonitorStream.php >>/home/fpp/media/logs/plugin-fpp-after-hours.log 2>&1
+# Installed by the fpp-after-hours plugin (scripts/fpp_install.sh) as
+# /etc/cron.d/fpp-after-hours-cron and removed on uninstall.
+# Once a minute, while music should be playing, restarts a stalled stream.
+# The monitor logs to FPP's plugin log itself, so cron's output is discarded.
+* * * * * fpp /usr/bin/php @PLUGIN_DIR@/cronMonitorStream.php >/dev/null 2>&1

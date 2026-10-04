@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
+require_once __DIR__.'/../fpp-after-hours-class.php';
 $fah=new fppAfterHours();
 
 if ($fah->config !== false) {

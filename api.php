@@ -3,7 +3,7 @@
 // output that would otherwise corrupt the JSON responses.
 error_reporting(E_ALL & ~(E_NOTICE | E_WARNING | E_DEPRECATED));
 ini_set('display_errors',false);
-require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
+require_once __DIR__.'/fpp-after-hours-class.php';
 
 function getEndpointsfppafterhours() {
     $endpoints=array();
@@ -15,21 +15,22 @@ function getEndpointsfppafterhours() {
     $endpoints[]=array('method'=>'GET', 'endpoint'=>'getStreams', 'callback'=>'fah_getStreams');
     $endpoints[]=array('method'=>'GET', 'endpoint'=>'getStreamPing', 'callback'=>'fah_getStreamPing');
     $endpoints[]=array('method'=>'POST', 'endpoint'=>'updateStream', 'callback'=>'fah_updateStream'); //also used for creation when uid=0
-    $endpoints[]=array('method'=>'GET', 'endpoint'=>'deleteStream', 'callback'=>'fah_deleteStream');
-
-    $endpoints[]=array('method'=>'GET', 'endpoint'=>'updateScripts', 'callback'=>'fah_updateScripts');
-    $endpoints[]=array('method'=>'GET', 'endpoint'=>'installDependencies', 'callback'=>'fah_installDependencies'); //Querystring Parameters [optional stream=true/false]
+    $endpoints[]=array('method'=>'POST', 'endpoint'=>'deleteStream', 'callback'=>'fah_deleteStream'); //POST body deleteStream=<uid>
 
     return $endpoints;
 }
 
 
-// GET /api/plugin/fpp-after-hours/deleteStream?deleteStream=<uid of stream>
+// POST /api/plugin/fpp-after-hours/deleteStream   body: deleteStream=<uid of stream>
+// POST only: a destructive change must not be reachable by a plain GET (a
+// link or <img> on any page the operator opens).
 function fah_deleteStream() {
+    $uid=$_POST['deleteStream'] ?? null;
+    if ($uid===null || $uid==='') return json(array('status'=>false, 'data'=>'deleteStream (uid) is required'));
     $fah=new fppAfterHours();
     $streams=$fah->config['streams'];
     foreach ($streams as $sKey=>$sData) {
-        if ($sData['uid']==$_GET['deleteStream']) {
+        if ($sData['uid']==$uid) {
             unset($streams[$sKey]);
             $fah->config['streams']=$streams;
             $save=$fah->saveConfigFile();
@@ -158,7 +159,7 @@ function fah_getStreamPing() {
 function fah_start() {
     $fah=new fppAfterHours();
     ob_start();
-    include $fah->directories['scriptDirectory'].'fpp-after-hours-start.php';
+    include $fah->directories['commandDirectory'].'fpp-after-hours-start.php';
     ob_end_clean(); // discard any stray text output (e.g. shebang line) before we build our own JSON response
     return json(array('status'=>true));
 }
@@ -167,7 +168,7 @@ function fah_start() {
 function fah_stop() {
     $fah=new fppAfterHours();
     ob_start();
-    include $fah->directories['scriptDirectory'].'fpp-after-hours-stop.php';
+    include $fah->directories['commandDirectory'].'fpp-after-hours-stop.php';
     ob_end_clean(); // discard any stray text output (e.g. shebang line) before we build our own JSON response
     return json(array('status'=>true));
 }
@@ -203,43 +204,4 @@ function fah_setMPDvolume() {
 }
 
 
-// GET /api/plugin/fpp-after-hours/updateScripts
-function fah_updateScripts() {
-    $errors=array();
-    $fah=new fppAfterHours();
-
-    if (!$fah->cronOkay) {
-        $fah->updateCron();
-        $fah->refreshCronOkayFlag();
-        if (!$fah->cronOkay) {
-            $errors[]="ERROR: Cron File could not be copied to cron.d";
-        }
-    }
-  
-    if (!$fah->scriptsOkay) {
-        $fah->updateScripts();
-        $fah->refreshScriptsOkayFlag();
-        if (!$fah->scriptsOkay) {
-            $errors[]="ERROR: script files could not be copied to fpp script directory";
-        }
-    }
-
-    if (count($errors)) return json(array('status'=>false, 'data'=>$errors));
-    return json(array('status'=>true));
-}
-
-
-// GET /api/plugin/fpp-after-hours/installDependencies[?stream=true/false]
-//  *stream=true - returns a stream response instead of a typical api response (designed for use in the gui modal for live updates)
-function fah_installDependencies() {
-    $stream=$_GET['stream'] ?? true;
-    $fah=new fppAfterHours();
-    if ($stream) {
-        $fah->installDependenciesStream();
-    }
-    else {
-        $fah->installDependencies();
-    }
-    exit;
-}
 ?>

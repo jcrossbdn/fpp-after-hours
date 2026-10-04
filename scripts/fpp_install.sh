@@ -1,166 +1,223 @@
 #!/bin/bash
+# Runs as root from FPP's Plugin Manager on install, Reinstall and update.
+# Must be safe to run any number of times. mpd/mpc (and pipewire-pulse) are
+# installed beforehand by the Plugin Manager from pluginInfo.json.
 set -e
 
 # FPP helpers (setSetting, LOGDIR, ...) - the Plugin Manager passes FPPDIR in.
-. ${FPPDIR:-/opt/fpp}/scripts/common
+. "${FPPDIR:-/opt/fpp}/scripts/common"
+
+PLUGIN_DIR=$(cd "$(dirname "$0")/.." && pwd)
+PLUGIN_DATA=${MEDIADIR:-/home/fpp/media}/plugindata
+MPD_BACKUP="${PLUGIN_DATA}/fpp-after-hours-mpdOriginal.conf"
 
 # Per-plugin log used by the cron monitor and the command scripts. Create it
 # owned by fpp up front: fppd runs the command scripts as root, and a
 # root-created log would be unwritable by the fpp-user cron job.
-PLUGIN_LOG=${LOGDIR:-/home/fpp/media/logs}/plugin-fpp-after-hours.log
+PLUGIN_LOG=${LOGDIR}/plugin-fpp-after-hours.log
 touch "$PLUGIN_LOG"
 chown fpp:fpp "$PLUGIN_LOG"
 chmod 664 "$PLUGIN_LOG"
 
-# Ensure dpkg auto-resolves conffile prompts with the maintainer's version
-# so unattended dependency installs (mpd/mpc) never block on stdin.
-mkdir -p /etc/dpkg/dpkg.cfg.d
-tee /etc/dpkg/dpkg.cfg.d/fpp-after-hours >/dev/null <<'EOF'
-force-confdef
-force-confnew
-EOF
-
-FPP_UID=$(id -u fpp)
-
-# FPP 10+ runs its own system-level PipeWire instance (fpp-pipewire,
-# fpp-wireplumber, fpp-pipewire-pulse). MPD must join THAT graph so its stream
-# mixes through FPP's sinks alongside normal playback. (Issue #49: pointing MPD
-# at a per-user session created a second PipeWire graph whose WirePlumber
-# grabbed the ALSA card exclusively, silently blocking fppd.)
-#
-# MPD runs as fpp, so it cannot use FPP's own pulse socket: every root libpulse
-# client FPP runs (e.g. its UI's pactl volume/sink calls, with
-# PULSE_RUNTIME_PATH=/run/pipewire-fpp/pulse) "secures" that directory back to
-# root:root 0700. Instead, have FPP's pulse server also listen on a socket in a
-# directory only this plugin manages. Same server, same graph, same sinks.
-PLUGIN_RUN_DIR=/run/fpp-after-hours
-PLUGIN_PULSE_SOCKET=${PLUGIN_RUN_DIR}/pulse-native
-
-# Directory for the extra socket, recreated on every boot (and again from the
-# pulse unit below, in case tmpfiles ran before this file existed).
-mkdir -p /etc/tmpfiles.d
-echo "d ${PLUGIN_RUN_DIR} 0755 root root -" > /etc/tmpfiles.d/fpp-after-hours.conf
-systemd-tmpfiles --create /etc/tmpfiles.d/fpp-after-hours.conf
-
-# pipewire-pulse drop-in (FPP's unit uses PIPEWIRE_CONFIG_DIR=/etc/pipewire).
-# pulse.properties is merged key-by-key, so server.address must keep FPP's
-# default "unix:native" alongside ours.
-mkdir -p /etc/pipewire/pipewire-pulse.conf.d
-cat << EOF > /etc/pipewire/pipewire-pulse.conf.d/90-fpp-after-hours.conf
-# Installed by the fpp-after-hours plugin: extra socket for MPD (runs as fpp).
-pulse.properties = {
-    server.address = [ "unix:native" "unix:${PLUGIN_PULSE_SOCKET}" ]
+# md5 dpkg recorded for the packaged /etc/mpd.conf (empty if unknown).
+mpd_conffile_md5() {
+    dpkg-query -W -f='${Conffiles}\n' mpd 2>/dev/null | awk '$1 == "/etc/mpd.conf" { print $2 }'
 }
-EOF
 
-mkdir -p /etc/systemd/system/mpd.service.d/
-cat << EOF > /etc/systemd/system/mpd.service.d/override.conf
-[Unit]
-# Ordering only - FPP starts its PipeWire stack on demand from fppinit, so we
-# must not pull it in early ourselves. The pulse hook below restarts MPD.
-After=fpp-pipewire-pulse.service
+# Stop MPD without touching anyone else's processes or skipping its shutdown
+# (issue #63): ask systemd first, then only a still-running process named
+# exactly "mpd" gets SIGTERM, and SIGKILL is the last resort.
+stop_mpd() {
+    systemctl stop mpd.service 2>/dev/null || true
+    pgrep -x mpd >/dev/null 2>&1 || return 0
+    echo "mpd is still running outside mpd.service - asking it to exit"
+    pkill -x mpd 2>/dev/null || true
+    for _ in $(seq 1 10); do
+        pgrep -x mpd >/dev/null 2>&1 || return 0
+        sleep 0.5
+    done
+    echo "WARNING: mpd did not exit after SIGTERM - sending SIGKILL" >&2
+    pkill -9 -x mpd 2>/dev/null || true
+}
 
-[Service]
-User=fpp
-Group=fpp
-SupplementaryGroups=audio
-Environment="PULSE_SERVER=unix:${PLUGIN_PULSE_SOCKET}"
-EOF
+###############################################################################
+# 1. Undo system-wide changes made by earlier versions of this plugin
+###############################################################################
 
-# Hook FPP's pulse unit: every time FPP (re)starts its pulse server, restart
-# MPD once our socket is listening, since MPD does not reliably reconnect on its
-# own. "-" means a hook failure can never fail FPP's own service.
-#
-# The hook must live outside /home/fpp: Exec* lines run inside FPP's unit,
-# whose CapabilityBoundingSet=CAP_SYS_NICE strips root of CAP_DAC_OVERRIDE, so
-# it cannot traverse fpp's home directory ("Permission denied"). Install a
-# root-owned copy instead (refreshed on every install/upgrade).
-PLUGIN_DIR=$(cd "$(dirname "$0")/.." && pwd)
-PULSE_HOOK=/usr/local/lib/fpp-after-hours/fpp_pulse_hook.sh
-install -D -o root -g root -m 0755 "${PLUGIN_DIR}/scripts/fpp_pulse_hook.sh" "${PULSE_HOOK}"
-mkdir -p /etc/systemd/system/fpp-pipewire-pulse.service.d/
-cat << EOF > /etc/systemd/system/fpp-pipewire-pulse.service.d/fpp-after-hours.conf
-[Service]
-ExecStartPre=-/bin/mkdir -p ${PLUGIN_RUN_DIR}
-ExecStartPost=-${PULSE_HOOK}
-EOF
+# Issue #61: this applied force-confdef/force-confnew to EVERY dpkg run on the
+# player. FPP's own apt runs now pass their conffile options per command.
+rm -f /etc/dpkg/dpkg.cfg.d/fpp-after-hours
 
-# mpd.conf may still specify user/group, which conflicts with the systemd override
-[ -f /etc/mpd.conf ] && sed -i -E 's/^[[:space:]]*(user[[:space:]])/#\1/; s/^[[:space:]]*(group[[:space:]])/#\1/' /etc/mpd.conf
+# Issue #62: the extra socket used to be added to FPP's own pulse server with a
+# drop-in in /etc/pipewire (read by every pipewire-pulse on the player) and a
+# hook on FPP's fpp-pipewire-pulse.service. Both are replaced by this plugin's
+# own fpp-after-hours-pulse.service below.
+LEGACY_FPP_PULSE_HOOK=false
+if [ -e /etc/pipewire/pipewire-pulse.conf.d/90-fpp-after-hours.conf ] ||
+   [ -e /etc/systemd/system/fpp-pipewire-pulse.service.d/fpp-after-hours.conf ]; then
+    LEGACY_FPP_PULSE_HOOK=true
+fi
+rm -f /etc/pipewire/pipewire-pulse.conf.d/90-fpp-after-hours.conf
+rmdir /etc/pipewire/pipewire-pulse.conf.d 2>/dev/null || true
+rm -f /etc/systemd/system/fpp-pipewire-pulse.service.d/fpp-after-hours.conf
+rmdir /etc/systemd/system/fpp-pipewire-pulse.service.d 2>/dev/null || true
+rm -rf /usr/local/lib/fpp-after-hours
+rm -f /etc/tmpfiles.d/fpp-after-hours.conf
 
-# Fix ownership of mpd's data/state directory for the fpp user
+# Issue #64: /run/mpd ownership is now handled by the mpd.service drop-in
+# (RuntimeDirectory=), not by overriding the package's tmpfiles rule.
+if [ -f /etc/tmpfiles.d/mpd.conf ] && grep -qx 'd /run/mpd 0755 fpp fpp -' /etc/tmpfiles.d/mpd.conf; then
+    rm -f /etc/tmpfiles.d/mpd.conf
+fi
+
+# The mpd drop-in used to be the generic "override.conf" (the name
+# `systemctl edit` uses). Remove it only if it is one this plugin wrote.
+OLD_MPD_OVERRIDE=/etc/systemd/system/mpd.service.d/override.conf
+if [ -f "$OLD_MPD_OVERRIDE" ] && grep -q '^User=fpp' "$OLD_MPD_OVERRIDE" &&
+   grep -q -E 'fpp-after-hours|PIPEWIRE_RUNTIME_DIR=/run/user/' "$OLD_MPD_OVERRIDE"; then
+    rm -f "$OLD_MPD_OVERRIDE"
+fi
+
+###############################################################################
+# 2. Keep a pristine copy of the packaged /etc/mpd.conf (issue #60)
+###############################################################################
+# Uninstall puts this back only if it is still byte-for-byte the conffile dpkg
+# recorded, so the plugin never leaves behind an mpd.conf that dpkg doesn't
+# recognise (which made the next mpd install stop at a conffile prompt).
+MPD_CONF_MD5=$(mpd_conffile_md5)
+if [ -f "$MPD_BACKUP" ] &&
+   { [ -z "$MPD_CONF_MD5" ] || [ "$(md5sum < "$MPD_BACKUP" | cut -d' ' -f1)" != "$MPD_CONF_MD5" ]; }; then
+    # Earlier versions took this copy after editing the file - useless for
+    # a restore, and restoring it is what orphaned the file.
+    rm -f "$MPD_BACKUP"
+fi
+if [ ! -f "$MPD_BACKUP" ] && [ -n "$MPD_CONF_MD5" ] && [ -s /etc/mpd.conf ] &&
+   [ "$(md5sum < /etc/mpd.conf | cut -d' ' -f1)" = "$MPD_CONF_MD5" ]; then
+    cp /etc/mpd.conf "$MPD_BACKUP"
+    chown fpp:fpp "$MPD_BACKUP"
+fi
+
+###############################################################################
+# 3. Let MPD run as fpp
+###############################################################################
+if [ -s /etc/mpd.conf ]; then
+    # user/group in mpd.conf conflict with User=/Group= in the systemd drop-in
+    sed -i -E 's/^[[:space:]]*(user[[:space:]])/#\1/; s/^[[:space:]]*(group[[:space:]])/#\1/' /etc/mpd.conf
+
+    # Point an mpd.conf written for the per-user socket (pre-#49) or FPP's own
+    # socket (first #49 fix) at this plugin's socket. The PHP side
+    # (checkForMPDFormat) also repairs this, but doing it here means the fix is
+    # live as soon as the update finishes.
+    sed -i -E "s#^([[:space:]]*server[[:space:]]+\")(/run/user/[0-9]+/pulse/native|/run/pipewire-fpp/pulse/native)(\")#\\1/run/fpp-after-hours/pulse-native\\3#" /etc/mpd.conf
+fi
+
+# mpd's data/state and log directories
 [ -d /var/lib/mpd ] && chown -R fpp:fpp /var/lib/mpd
-
-# Override the packaged tmpfiles rule so /run/mpd is owned by fpp on every boot
-mkdir -p /etc/tmpfiles.d
-echo 'd /run/mpd 0755 fpp fpp -' > /etc/tmpfiles.d/mpd.conf
-systemd-tmpfiles --create /etc/tmpfiles.d/mpd.conf
-
-# Fix log directory too, if present
 [ -d /var/log/mpd ] && chown -R fpp:fpp /var/log/mpd
+
+# The FPP 10+ branch always runs on FPP's PipeWire backend (the ALSA backend is
+# retired), so MPD always uses the pulse output - never direct hw: devices,
+# which would contend with FPP for the card.
+echo "pipewire" > "${PLUGIN_DATA}/fpp-after-hours-audioMode"
+chown fpp:fpp "${PLUGIN_DATA}/fpp-after-hours-audioMode"
 
 # Earlier versions of this plugin unmasked and started a per-user PipeWire /
 # WirePlumber / pipewire-pulse stack for the fpp user. FPP deliberately masks
 # those units: a second WirePlumber opens the same ALSA cards and, because ALSA
 # hw devices are exclusive, FPP's own instance can then no longer play audio.
 # Stop that stack if it is running and restore FPP's masking.
+FPP_UID=$(id -u fpp)
 USER_PW_UNITS="pipewire.socket pipewire.service pipewire-pulse.socket pipewire-pulse.service wireplumber.service"
 STOPPED_USER_PW=false
 if [ -d "/run/user/${FPP_UID}" ]; then
-    if runuser -u fpp -- env XDG_RUNTIME_DIR=/run/user/${FPP_UID} \
+    if runuser -u fpp -- env "XDG_RUNTIME_DIR=/run/user/${FPP_UID}" \
             systemctl --user is-active --quiet pipewire.service wireplumber.service pipewire-pulse.service 2>/dev/null; then
         STOPPED_USER_PW=true
     fi
-    runuser -u fpp -- env XDG_RUNTIME_DIR=/run/user/${FPP_UID} \
+    # shellcheck disable=SC2086  # USER_PW_UNITS is a list: split on purpose
+    runuser -u fpp -- env "XDG_RUNTIME_DIR=/run/user/${FPP_UID}" \
         systemctl --user disable --now ${USER_PW_UNITS} 2>/dev/null || true
 fi
 mkdir -p /home/fpp/.config/systemd/user
 for svc in ${USER_PW_UNITS}; do
-    ln -sf /dev/null /home/fpp/.config/systemd/user/${svc}
+    ln -sf /dev/null "/home/fpp/.config/systemd/user/${svc}"
 done
 chown -R fpp:fpp /home/fpp/.config
 if [ -d "/run/user/${FPP_UID}" ]; then
-    runuser -u fpp -- env XDG_RUNTIME_DIR=/run/user/${FPP_UID} systemctl --user daemon-reload 2>/dev/null || true
+    runuser -u fpp -- env "XDG_RUNTIME_DIR=/run/user/${FPP_UID}" systemctl --user daemon-reload 2>/dev/null || true
 fi
 
-# The FPP 10+ branch always runs on FPP's PipeWire backend (the ALSA backend is
-# retired), so MPD always uses the pulse output - never direct hw: devices,
-# which would contend with FPP for the card in exactly the same way.
-echo "pipewire" > /home/fpp/media/plugindata/fpp-after-hours-audioMode
-chown fpp:fpp /home/fpp/media/plugindata/fpp-after-hours-audioMode
-
-# Migrate an existing mpd.conf that targets the per-user socket (pre-#49) or
-# FPP's own socket (earlier #49 fix). The PHP side (checkForMPDFormat) also
-# repairs this, but doing it here means the fix is live as soon as the plugin
-# update finishes.
-if [ -f /etc/mpd.conf ]; then
-    sed -i -E "s#^([[:space:]]*server[[:space:]]+\")(/run/user/[0-9]+/pulse/native|/run/pipewire-fpp/pulse/native)(\")#\\1${PLUGIN_PULSE_SOCKET}\\3#" /etc/mpd.conf
+###############################################################################
+# 4. The plugin's own PulseAudio socket on FPP's PipeWire graph (issue #62)
+###############################################################################
+# See templates/fpp-after-hours-pulse.service for why. Config lives in a
+# plugin-owned directory that only that unit reads (PIPEWIRE_CONFIG_DIR): the
+# packaged pipewire-pulse.conf (symlinked, so it tracks PipeWire upgrades) plus
+# one drop-in. Nothing is added to /etc/pipewire or to FPP's units.
+PW_CONF_DIR=/etc/fpp-after-hours/pipewire
+if [ ! -f /usr/share/pipewire/pipewire-pulse.conf ] || [ ! -x /usr/bin/pipewire-pulse ]; then
+    echo "WARNING: pipewire-pulse is not installed - MPD will have no audio output. Reinstall this plugin from the Plugin Manager." >&2
 fi
+install -d -m 0755 "${PW_CONF_DIR}/pipewire-pulse.conf.d"
+ln -sfn /usr/share/pipewire/pipewire-pulse.conf "${PW_CONF_DIR}/pipewire-pulse.conf"
+install -m 0644 "${PLUGIN_DIR}/templates/pipewire/90-fpp-after-hours.conf" "${PW_CONF_DIR}/pipewire-pulse.conf.d/90-fpp-after-hours.conf"
+install -m 0644 "${PLUGIN_DIR}/templates/fpp-after-hours-pulse.service" /etc/systemd/system/fpp-after-hours-pulse.service
+install -D -m 0644 "${PLUGIN_DIR}/templates/mpd-fpp-after-hours.conf" /etc/systemd/system/mpd.service.d/fpp-after-hours.conf
 
 systemctl daemon-reload
 
-# If FPP's pulse server is already running, restart it so it starts listening
-# on our socket (this also runs the hook, which restarts MPD). FPP's own UI
-# restarts this service on its own, so fppd tolerates it.
-systemctl try-restart fpp-pipewire-pulse.service || true
+# Stop MPD before its audio path changes underneath it.
+stop_mpd
 
-# kill any stale mpd instance holding the port before restarting
-pkill -9 mpd 2>/dev/null || true
-sleep 1
-systemctl daemon-reload
+# WantedBy=fpp-pipewire.service: started whenever FPP starts its PipeWire.
+systemctl enable fpp-after-hours-pulse.service
+
+# One time only, when migrating from the legacy hook: FPP's pulse server is
+# still listening on our socket path until it restarts without the drop-in
+# removed above. Later installs never touch FPP's audio services.
+if [ "$LEGACY_FPP_PULSE_HOOK" = true ]; then
+    echo "Migrating from the shared pulse socket: restarting FPP's pulse server once"
+    systemctl try-restart fpp-pipewire-pulse.service || true
+fi
+
+# Start (or pick up a changed config for) our socket if FPP's PipeWire is up;
+# otherwise it starts along with it.
+if systemctl is-active --quiet fpp-pipewire.service; then
+    systemctl restart fpp-after-hours-pulse.service ||
+        echo "WARNING: fpp-after-hours-pulse failed to start. Check 'journalctl -u fpp-after-hours-pulse'." >&2
+fi
+
+###############################################################################
+# 5. Stream monitor
+###############################################################################
+# Installed here rather than from the plugin page, so it exists as soon as the
+# plugin is installed and is plainly one of the install's system changes.
+sed "s#@PLUGIN_DIR@#${PLUGIN_DIR}#" "${PLUGIN_DIR}/templates/fpp-after-hours-cronTemplate" > /etc/cron.d/fpp-after-hours-cron
+chmod 0644 /etc/cron.d/fpp-after-hours-cron
+
+###############################################################################
+# 6. Start MPD
+###############################################################################
 systemctl reset-failed mpd.service 2>/dev/null || true
-systemctl restart mpd || true   # readiness loop below reports the failure
+# Uninstall disables mpd (so a Reinstall needs this); harmless otherwise.
+systemctl enable mpd.service 2>/dev/null || true
+systemctl start mpd.service || true   # readiness check below reports a failure
+
+# Write the plugin's audio_output block now rather than on the first page load
+# or start command. Run as fpp so plugindata files stay fpp-owned.
+runuser -u fpp -- /usr/bin/php -r \
+    'require $argv[1]; new fppAfterHours(true);' "${PLUGIN_DIR}/fpp-after-hours-class.php" \
+    >> "$PLUGIN_LOG" 2>&1 || true
 
 # Wait for mpd to actually respond, not just report active-in-systemd
 MPD_READY=false
-for i in $(seq 1 15); do
+for _ in $(seq 1 15); do
     if mpc status >/dev/null 2>&1; then
         MPD_READY=true
         break
     fi
     sleep 0.3
 done
-
 if [ "$MPD_READY" != true ]; then
     echo "WARNING: mpd failed to start or is not responding. Check 'systemctl status mpd' and 'journalctl -u mpd'." >&2
 fi

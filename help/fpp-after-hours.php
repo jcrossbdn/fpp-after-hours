@@ -2,10 +2,10 @@
 echo "<p id='pageTop'></p>";
 echo "<a href='https://github.com/jcrossbdn/fpp-after-hours/blob/master/README.md' target='_blank'>Please click here to go to the plugins github page</a><br><br>";
 
-require_once '/home/fpp/media/plugins/fpp-after-hours/help/Parsedown.php';
+require_once __DIR__.'/Parsedown.php';
 
 $parsedown = new Parsedown();
-$html=$parsedown->text(file_get_contents('/home/fpp/media/plugins/fpp-after-hours/README.md'));
+$html=$parsedown->text(file_get_contents(dirname(__DIR__).'/README.md'));
 preg_match_all('/img src=(?:(?:"([^"]+)")|(?:\'([^\']+)\'))/i', $html, $images);
 if (isset($images[0]) && count($images[0])) {
     foreach ($images[1] as $index=>$img) {

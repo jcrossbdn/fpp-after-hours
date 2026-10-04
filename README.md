@@ -3,7 +3,7 @@
 This plugin allows you to configure music sources for playback typically outside of show hours
 
 ### Known limitations / Gotchas
-  - You must add at least a 1 second pause entry in the playlist after the fpp-after-hours-stop.php script is called (failure to do this could cause your show to halt especially if using a USB sound card).
+  - You must add at least a 1 second pause entry in the playlist after the "FPP After Hours Plugin - Stop" command (failure to do this could cause your show to halt especially if using a USB sound card).
   - If you installed the plugin before November 27th 2024 the plugin update button from the plugin manager will not work.  The issue has been corrected now but you must uninstall the plugin and reinstall it to properly bring in the new version.
   
 ### Getting Started
@@ -12,16 +12,11 @@ This plugin allows you to configure music sources for playback typically outside
    - from the fpp user interface, Content Setup / Plugin Manager, click on the install button beside the After Hours Music Player Plugin
 3. Navigate to the "Content Setup" menu in the Falcon Player User Interface and then the "After Hours Music" option. If you dont see this option then refresh your browser window.
 4. You will then be presented with the After Hours plugin home page.
-5. You will likely see only a screen that says "Additional Software Must Be Installed". Click the "Install" button to install Media Player Daemon (mpd) and a control interface called mpc.  The after hours music plugin uses these applications to play music and are not optional. This installation can take a long time, don't leave your browser window until the page loading indicator has completed on your browser.  If you refresh or close your browser window before it completes you will have to install the dependencies manually from the command line.  The command is *sudo apt update && sudo apt -y install mpd mpc*
-
-![first page](install-dependencies.jpg)
-
-6. Once installation of mpd and mpc has completed you will be presented with a confirmation screen.  Click "Click here to return to after hours plugin page".
-
-![first page confirm](install-dependencies-complete.jpg)
+5. The plugin needs Media Player Daemon (mpd) and its control interface mpc to play music. FPP's Plugin Manager installs them automatically along with the plugin, so there is nothing extra to install.
+   - If the plugin page shows "Required software is missing", mpd/mpc are not (fully) installed - for example after an interrupted install. Go to Content Setup / Plugin Manager and reinstall the After Hours Music Player Plugin. Your streams and settings are kept.
 
 ### After an OS Upgrade
-You will have to reinstall all the dependencies, however, all your configurations should have been restored after the upgrade.  This installation can take a long time, don't leave your browser window until the page loading indicator has completed on your browser.  If you left the page early or clicked out of it you will have to install the dependencies manually from the command line.
+Reinstall the plugin from the Plugin Manager (or use FPP's *Reinstall All* plugins option). This reinstalls mpd and mpc for you, and all your configurations should have been restored after the upgrade.
 
 Configuration files are located in /home/fpp/media/plugindata and will be backed up by fpp if you choose Backup Area "Plugin Settings" when doing an FPP Backup from the "Status/Control" menu.
 
@@ -32,7 +27,7 @@ This plugin is currently only setup to handle internet audio streams.  Local mus
 
 The page is separated into a few sections
 - Now playing shows the current stream information including volume and title if provided by the radio station
-- The control section allows you to run the play and stop scripts (this runs the same scripts that are saved in the fpp scripts directory) and adjust the volume in real time (if music is currently running the original show volume will be displayed)
+- The control section allows you to run the play and stop scripts (these run the same scripts as the plugin's "FPP After Hours Plugin - Start" and "- Stop" FPP Commands) and adjust the volume in real time (if music is currently running the original show volume will be displayed)
 - Stream Managment where you can create edit and delete streams.
   - On larger screens the stream name, url and volume are editable by clicking the text or you may click the edit icon
   - On smaller screens only the stream name will be visible but you may click the stream name to view and edit all options
@@ -58,11 +53,13 @@ The page is separated into a few sections
 6. The current volume will be saved as "Show Volume" and the fpp volume will be adjusted if you have a value in the volume column for that station.
 
 ### How does volume work
-- When the Start button is pressed or the fpp-after-hours-start.php script is executed the script will capture the current volume of the system and save it to a file.  
-- When the Stop button is pressed or the fpp-after-hours-stop.php script is executed the script will reset the systems volume to the volume level previously captured.  
+- When the Start button is pressed or the "FPP After Hours Plugin - Start" command runs the script will capture the current volume of the system and save it to a file.  
+- When the Stop button is pressed or the "FPP After Hours Plugin - Stop" command runs the script will reset the systems volume to the volume level previously captured.  
 
 ### Finding the URL of your favorite internet radio station
 There are several internet radio streams available and you just have to find something that can be played by the "mpc" player.  I have found that some .m3u links don't work but most .pls streams seem to (I have not explored why).
+
+The Miller Lights has graciously offered their holiday streaming service for use by the community: add https://radio.themillerlights.com:8000/radio.mp3 as the stream URL to use it.
 
 https://www.internet-radio.com/stations/christmas/# is one site where you can find many stations.  Navigate to this website, find the station you would like and click on the ".pls" link.  Save the file or open with notepad or another text editor.
 
@@ -109,9 +106,18 @@ A- The plugin will automatically detect new sound cards and configure mpd to use
 
 ### Technical
 - mpd and mpc are used by this plugin to play music
-- a file is copied to cron.d to test for failed music. This cron will restart the playlist if problems are detected as long as the music is supposed to be operating
+- the installer adds a cron.d entry that checks for failed music once a minute. It restarts the stream if problems are detected, as long as the music is supposed to be playing
+- older versions copied fpp-after-hours-start.php / -stop.php into FPP's scripts folder. That no longer happens; use the FPP Commands instead (the old copies keep working while the plugin is installed and are removed on uninstall)
 - mpd is configured with all known sound cards, the currently selected fpp sound card is forced on during mpd playback
-- there is an uninstall script in the plugin directory that will unload cron, remove mpd & mpc, and remove plugin-data files used by this plugin. The main config file will not be deleted and is found in the plugindata directory.
+- mpd, mpc and pipewire-pulse are declared as dependencies in pluginInfo.json, so FPP's Plugin Manager installs them, and on uninstall removes them only if nothing else on the player still needs them. The plugin never runs apt itself.
+- MPD plays through FPP's own PipeWire instance, so its audio mixes into the same output as show audio. It connects through a small PulseAudio server that belongs to this plugin (fpp-after-hours-pulse.service), which joins FPP's PipeWire graph and listens only on /run/fpp-after-hours/pulse-native. It does not change FPP's audio services or anything in /etc/pipewire.
+- Changes the installer makes outside the plugin directory, all reversed by the uninstall script:
+  - /etc/systemd/system/fpp-after-hours-pulse.service (enabled to start with fpp-pipewire.service) and its config in /etc/fpp-after-hours/
+  - /etc/systemd/system/mpd.service.d/fpp-after-hours.conf, which runs mpd as the fpp user through the plugin's socket
+  - /etc/mpd.conf is edited (audio output, user/group lines commented out). The unmodified packaged file is saved first and put back on uninstall
+  - ownership of /var/lib/mpd and /var/log/mpd is given to fpp (returned to the mpd user on uninstall)
+  - /etc/cron.d/fpp-after-hours-cron (stream monitor)
+- the uninstall script stops and disables mpd, removes all of the above, and removes plugin-data files used by this plugin. The main config file will not be deleted and is found in the plugindata directory.
 
 ### API
 All fpp-after-hours functions from the user interface are now handled by the fpp-after-hours API which is exposed on the computer running the fpp-after-hours plugin.  The API endpoints are as follows:
@@ -134,7 +140,7 @@ data:{
   &nbsp;&nbsp;detail: string, (information from the player, can include volume and any errors)
   &nbsp;&nbsp;musicIsRunning: bool, (is music currently running in the MPD player)
   &nbsp;&nbsp;musicShouldBeRunning: bool, (is fpp-after-hours currently supposed to be playing music)
-  &nbsp;&nbsp;dependenciesAreLoaded: bool, (is the MPD and MPC applications installed on this computer)
+  &nbsp;&nbsp;dependenciesAreLoaded: bool, (are the mpd and mpc packages fully installed on this computer)
   &nbsp;&nbsp;mpdVolume: string (what is the current volume returned by the MPD player)
   &nbsp;&nbsp;}
 }</pre>
@@ -230,30 +236,9 @@ Will only change the volume of the MPD player and only works when MPD is playing
 ***
 
 #### **Delete Stream**
-**GET** /api/plugin/fpp-after-hours/deleteStream?deleteStream=*&lt;uid of stream&gt;*
-- deleteStream is required
+**POST** /api/plugin/fpp-after-hours/deleteStream (form body: deleteStream=*&lt;uid of stream&gt;*)
+- deleteStream is required (POST only, so a stream can't be deleted by simply opening a link)
   - uid is found in the fpp-after-hours-config.json file or the getStreams API endpoint
 - Returns:
   - Successful (HTTP 200): {status:true}
   - Error (HTTP 200): {status:false, data:"The error message"}
-
-***
-
-#### **Update Scripts**
-Will check all scripts and crontab entries and update them if there are any changes
-
-**GET** /api/plugin/fpp-after-hours/updateScripts
-- Returns
-  - Successful HTTP 200: {status:true}
-  - Any Error HTTP 200: {status:false, data:{"error 1","error2","error3"}}
-
-***
-
-#### **Install Dependencies**
-Will run the linux command "sudo apt update && sudo apt -y install mpd mpc"
-
-**GET** /api/plugin/fpp-after-hours/installDependencies[?stream]
-- stream (optional)
-  - true *default (will run the command in such a way that its output can be streamed to the user interface live)
-  - false (will run the command and return once completed)
-- Returns HTTP 200: {status:true}
