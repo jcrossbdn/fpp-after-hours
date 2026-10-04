@@ -1,22 +1,5 @@
-# Installed by the fpp-after-hours plugin into
-# /etc/fpp-after-hours/pipewire/pipewire-pulse.conf.d/ - a directory read ONLY
-# by fpp-after-hours-pulse.service (it sets PIPEWIRE_CONFIG_DIR). It is not on
-# PipeWire's default search path, so no other pipewire-pulse loads this file.
-#
-# The main pipewire-pulse.conf next to this directory is a symlink to the
-# packaged /usr/share/pipewire/pipewire-pulse.conf, so it always matches the
-# installed PipeWire version; this file only changes what differs.
-
-pulse.properties = {
-    # Listen only on the plugin's socket - not on "unix:native", which is
-    # FPP's own server's address.
-    server.address = [ "unix:/run/fpp-after-hours/pulse-native" ]
-
-    # This server only carries MPD's stream into FPP's graph. FPP's own pulse
-    # server already provides the fallback sink and device/stream restore, so
-    # don't load a second copy of each into the same graph.
-    pulse.cmd.always-sink    = false
-    pulse.cmd.device-manager = false
-    pulse.cmd.device-restore = false
-    pulse.cmd.stream-restore = false
-}
+# Installed by the fpp-after-hours plugin (scripts/fpp_install.sh) as
+# /etc/cron.d/fpp-after-hours-cron and removed on uninstall.
+# Once a minute, while music should be playing, restarts a stalled stream.
+# The monitor logs to FPP's plugin log itself, so cron's output is discarded.
+* * * * * fpp /usr/bin/php @PLUGIN_DIR@/cronMonitorStream.php >/dev/null 2>&1
