@@ -107,7 +107,7 @@
         {
             "minFPPVersion": "10.0",
             "maxFPPVersion": "0",
-            "branch": "master",
+            "branch": "fix-issues-60-64",
             "sha": "",
             "dependencies": {
                 "packages": [
