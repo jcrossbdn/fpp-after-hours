@@ -1,12 +1,18 @@
 #!/usr/bin/php
 <?php
+// Legacy form from the old copy in FPP's scripts folder (playlist "Script"
+// entries): fpp-after-hours-stop.php fade <seconds> <stopPercent>
+if (isset($argv[1]) && strtolower($argv[1])=="fade") {
+  $argv[1]=$argv[2] ?? 0;
+  $argv[2]=$argv[3] ?? 30;
+}
 if (isset($argv[1])) $argv[1]=preg_replace('/\D/','',$argv[1]); //fade in over seconds
 if (isset($argv[2])) $argv[2]=preg_replace('/\D/','',$argv[2]); //start at volume percentage
 if (isset($argv[1]) && isset($argv[2])) {
     if (isset($argv[2]) && is_numeric($argv[2])) $minVolume=$argv[2]; //set the minimum fade volume level
     else $minVolume=0;
     sleep(1); //no idea why fade out script does not work through fpp scheduler without this delay
-    require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
+    require_once __DIR__.'/../fpp-after-hours-class.php';
     $fah=new fppAfterHours();
     $fah->setMusicRunningStatus(false);
     $fah->setCurrentInternetRadioHost();
@@ -17,7 +23,6 @@ if (isset($argv[1]) && isset($argv[2])) {
         $os=floor(microtime(true)*1000); //operation start time
         if (!isset($vol)) $volStr="";
         else $volStr = " $vol";
-        //file_put_contents('/home/fpp/media/plugindata/teststop',"$os - mpc volume$volStr\n",FILE_APPEND);
         exec("{$fah->mpcPath} volume $volStr",$volRet);
         $volRet=array_reverse($volRet);
         foreach ($volRet as $v) {
@@ -51,7 +56,7 @@ else {
     // interpolated an undefined $fah->mpcPath, ran " stop" and did nothing.
     $mpc = trim(shell_exec('which mpc'));
     if ($mpc !== '') exec("$mpc stop");
-    require_once '/home/fpp/media/plugins/fpp-after-hours/fpp-after-hours-class.php';
+    require_once __DIR__.'/../fpp-after-hours-class.php';
     $fah=new fppAfterHours();
     $fah->setMusicRunningStatus(false);
     $fah->setCurrentInternetRadioHost();

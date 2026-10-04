@@ -26,19 +26,15 @@ echo <<<EOF
     padding: 0px 0px 0px 0px!important;
   }
 
-  .redIcon {color:red}
 </style>
 
 <div id="fahDependencies" class="hidden">
   <div class="row">
     <div class="col-sm-12 col-md-8 offset-md-2">
         <div id="serviceStatus" class="alert alert-danger" style="text-align:center" role="alert">
-          <h3>! ! ! Additional Software Must Be Installed ! ! !</h3>
-          <p>will run <i>sudo apt-get update && sudo apt-get -y install mpd mpc</i></p>
-          <button id="fahInstallDepends" class="buttons btn-rounded" onClick="fahDependsInstall()">
-            <i class='fas fa-fw fa-play'></i>
-            <span class="playerControlButton-text">Install</span>
-          </button>
+          <h3>Required software is missing</h3>
+          <p>This plugin needs <i>mpd</i> and <i>mpc</i>, which FPP's Plugin Manager installs for it, but they are not (fully) installed on this player.</p>
+          <p>Go to the <a href='/plugins.php'>Plugin Manager</a> and reinstall the After Hours Music Player Plugin to install them. Your streams and settings are kept.</p>
         </div>
     </div>
   </div>
@@ -94,8 +90,7 @@ echo <<<EOF
         </tbody>
       </table>
       <br>
-      The Miller Lights has graciously offered their holiday streaming service for use by the community.  Just add https://radio.themillerlights.com:8000/radio.mp3 as the stream url to use it<br>
-      <a href='https://www.internet-radio.com/stations/christmas/#' target='_blank'>https://www.internet-radio.com/stations/christmas/#</a> has lots of radio stations (see help for instructions)</i>
+      Need a stream URL? See "Finding the URL of your favorite internet radio station" in this plugin's help.
     </form>
   </div>
 </div>
@@ -124,7 +119,7 @@ echo <<<EOF
                     <input class='streamData' type='checkbox' id='active_` + item.uid + `' uid='` + item.uid + `' style='cursor:pointer;' onclick='saveStreamData($(this))' name='stream_active'` + (item.active==true ? " checked" : "") + `>
                   </td>
                   <td>
-                    <i id='fah_streamError_` + item.uid + `' class='fas fa-exclamation-triangle redIcon d-none' alt='Stream URL not respoding'></i>
+                    <i id='fah_streamError_` + item.uid + `' class='fas fa-exclamation-triangle text-danger d-none' alt='Stream URL not respoding'></i>
                     <div class='d-table-cell d-lg-none' uid='` + item.uid + `' style='cursor:pointer;' onclick='addEditStream($(this))'>` + ((item.streamName).trim().length==0 ? "_" : item.streamName) + `</div>
                     <input type='text' id='streamName_` + item.uid + `' uid='` + item.uid + `' name='stream_name' oninput='growToShow($(this),true)' class='streamData textboxAsLabel d-none d-lg-table-cell' value='` + item.streamName + `'></input>
                   </td>
@@ -171,9 +166,10 @@ echo <<<EOF
   function deleteStream(uid) {
     if (confirm("Are you sure you want to delete stream " + $("#streamName_"+uid).val())) {
       $.ajax({
-        type: "GET",
+        type: "POST",
         dataType: "json",
-        url: "/api/plugin/fpp-after-hours/deleteStream?deleteStream=" + uid,
+        data: {deleteStream: uid},
+        url: "/api/plugin/fpp-after-hours/deleteStream",
         success: function(data) {
           location.reload();
         },
@@ -523,15 +519,6 @@ echo <<<EOF
     loadInternetStreams();
 
     $.ajax({
-      type: "GET",
-      dataType: "json",
-      url: "/api/plugin/fpp-after-hours/updateScripts",
-      success: function(data) {
-        console.log(data);
-      }
-    });
-
-    $.ajax({
       type: "POST",
       dataType: "json",
       url: "/api/plugin/fpp-after-hours/updates",
@@ -549,38 +536,6 @@ echo <<<EOF
     fahGetDetails()
   },3000);
 
-  function fahDependsInstall() {
-    var fahDIOptions = {
-      id: "fahDependsInstall",
-      title: "Installing fpp-after-hours additional software",
-      body: "<textarea style='width: 99%; height: 500px;' disabled id='fahInstallProgress'></textarea>",
-      class: "modal-dialog-scrollable",
-      noClose: true,
-      keyboard: false,
-      backdrop: "static",
-      footer: "",
-      buttons: {
-        "Close": {
-          id: 'fahDependsCloseDialogButton',
-          click: function() {
-            // Flag the restart instead of restarting fppd here, so FPP can do
-            // it safely between sequences rather than killing a running show.
-            SetRestartFlag(1);
-            CloseModalDialog("fahDependsInstall"); location.reload();
-          },
-          disabled: true,
-          class: 'btn-success'
-        }
-      }
-    };
-    $("#fahDependsCloseDialogButton").prop("disabled", true);
-    DoModalDialog(fahDIOptions);
-    StreamURL('/api/plugin/fpp-after-hours/installDependencies', 'fahInstallProgress', 'fahDependsInstallDone');
-  }
-  function fahDependsInstallDone() {
-    $("#fahDependsCloseDialogButton").prop("disabled",false);
-    //EnableModalDialogCloseButton("fahDependsInstall");  //we want to force the location.reload task so instead of hooking into the modal, just force the close button to be used
-  }
 </script>
 EOF;
 ?>

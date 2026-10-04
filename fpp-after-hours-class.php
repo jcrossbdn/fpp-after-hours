@@ -5,10 +5,12 @@
 $skipJSsettings = 1;
 include_once('/opt/fpp/www/common.php');
 
-// The command scripts and the cron monitor run outside Apache, so PHP's
-// error_log() (and any PHP warnings/fatals) would otherwise only go to stderr.
-// Send them to FPP's per-plugin log so they show in the log viewer/Support Zip.
-if (PHP_SAPI === 'cli' && isset($settings['logDirectory'])) {
+// Everything this plugin logs goes to FPP's one per-plugin log (guidelines
+// §1), in every context: the command scripts and cron monitor (CLI) would
+// otherwise log to stderr, and the API and pages (Apache) to Apache's error
+// log. ini_set only lasts for this request/process.
+if (isset($settings['logDirectory'])) {
+    ini_set('log_errors', '1');
     ini_set('error_log', $settings['logDirectory'].'/plugin-fpp-after-hours.log');
 }
 
@@ -20,19 +22,22 @@ class fppAfterHours {
   public $config; //configuration file
   public $directories; //directories used in this environment
   public $pluginName; //name of this plugin
-  public $cronOkay; //cron.d file not loaded or changed (boolean)
-  public $scriptsOkay; //fpp scripts not loaded or changed (boolean)
+  public $mpdState; //'running', 'not_running' or 'missing'
   private $dbh;
   public $mpcPath;
 
   public function __construct($uiRequest=true) {
     $this->pluginName='fpp-after-hours';
     
-    $this->directories=array('pluginDirectory'=>"/home/fpp/media/plugins/$this->pluginName/",
-                       'pluginDataDirectory'=>"/home/fpp/media/plugindata/",
-                       'scriptDirectory'=>"/home/fpp/media/scripts/",
-                       'crondDirectory'=>"/etc/cron.d/",
-                       'playlistDirectory'=>"/home/fpp/media/playlists/"
+    // Resolve FPP's directories the FPP way rather than assuming
+    // /home/fpp/media, so a relocated media directory still works.
+    global $settings;
+    $mediaDir = rtrim($settings['mediaDirectory'] ?? '/home/fpp/media', '/');
+    $this->directories=array('pluginDirectory'=>dirname(__FILE__).'/',
+                       'pluginDataDirectory'=>"$mediaDir/plugindata/",
+                       // The plugin's start/stop scripts (also run by FPP as
+                       // the plugin's FPP Commands) live in its own folder.
+                       'commandDirectory'=>dirname(__FILE__).'/commands/'
                        );
 
     $this->loadConfigFile();
@@ -43,9 +48,10 @@ class fppAfterHours {
     $this->checkIsMusicRunning();
     $this->checkMusicShouldBeRunning();
     $this->getSavedShowVolume();
-    $this->refreshCronOkayFlag();
-    $this->refreshScriptsOkayFlag();
-    if ($uiRequest) $this->checkForMPDFormat(); //do this only so we don't have to update startup script to perform the format and bitrate mpd.conf update - 2019-11-06
+    // Repairs mpd.conf's audio_output block. Only once mpd is installed: on a
+    // box without it, writing /etc/mpd.conf leaves a file no package owns and
+    // the next mpd install stops at a conffile prompt (issue #60).
+    if ($uiRequest && $this->dependenciesAreLoaded) $this->checkForMPDFormat();
   }
 
   public function saveConfigFile() {
@@ -146,8 +152,23 @@ class fppAfterHours {
     return (object)$out;
   }
   
+  // True only when dpkg reports the package fully installed ("ii"). A
+  // half-configured package (e.g. stopped at a conffile prompt) is not.
+  public function isPackageInstalled($package) {
+    $status = shell_exec("dpkg-query -W -f='\${db:Status-Abbrev}' ".escapeshellarg($package)." 2>/dev/null");
+    return is_string($status) && substr($status, 0, 2) === 'ii';
+  }
+
+  // Only ever modify /etc/mpd.conf when the mpd package owns a real one (#60).
+  public function mpdConfigIsManageable() {
+    clearstatcache(true, '/etc/mpd.conf');
+    return $this->isPackageInstalled('mpd') && is_file('/etc/mpd.conf') && @filesize('/etc/mpd.conf') > 0;
+  }
+
   public function checkDependenciesLoaded() {
-    $installed = trim(shell_exec('command -v mpd')) !== '' && trim(shell_exec('command -v mpc')) !== '';
+    // mpd/mpc are declared in pluginInfo.json and installed (and released) by
+    // FPP's Plugin Manager - this plugin never runs apt itself (#64).
+    $installed = $this->isPackageInstalled('mpd') && $this->isPackageInstalled('mpc');
     if (!$installed) { $this->dependenciesAreLoaded = false; $this->mpdState = 'missing'; return; }
 
     exec('mpc version 2>&1', $ret);
@@ -159,22 +180,6 @@ class fppAfterHours {
     }
     $this->dependenciesAreLoaded = true;   // packages are present
     $this->mpdState = strstr(implode(",", $ret), " version: ") ? 'running' : 'not_running';
-  }
-  
-  public function installDependencies() {
-    exec('sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=\"--force-confold\" install mpd mpc',$out);
-    $this->repairMPDConfig();
-    return $out;
-  }
-
-  public function installDependenciesStream() {
-    DisableOutputBuffering();
-    system("sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=\"--force-confold\" install mpd mpc",$ret);
-    $this->repairMPDConfig();
-    echo "\n\nfpp-after-hours additional software installation complete";
-    while (@ob_end_flush());
-    flush();
-    session_write_close();
   }
   
   public function checkIsMusicRunning($returnHash=false) { //returns mpc command output 
@@ -242,58 +247,6 @@ class fppAfterHours {
   }
   
   
-  public function checkCronLoaded() {
-    if (!file_exists($this->directories['crondDirectory']."fpp-after-hours-cron")) return false;
-    else return true;
-  }
-  public function checkCronChanged() {
-    if (file_get_contents($this->directories['crondDirectory']."fpp-after-hours-cron") != file_get_contents($this->directories['pluginDirectory']."templates/fpp-after-hours-cronTemplate")) return true;
-    else return false;
-  }
-  public function updateCron() {
-    exec("sudo cp ".$this->directories['pluginDirectory']."templates/fpp-after-hours-cronTemplate ".$this->directories['crondDirectory']."fpp-after-hours-cron");
-  }
-  public function refreshCronOkayFlag() {
-    @$this->cronOkay=false;
-    if ($this->checkCronLoaded() == true)
-      if ($this->checkCronChanged() == false)
-        $this->cronOkay=true;
-  }
-  
-  
-  
-  public function checkScriptsLoaded() {
-    if (!file_exists($this->directories['scriptDirectory'].'fpp-after-hours-start.php')) return false; 
-    if (!file_exists($this->directories['scriptDirectory'].'fpp-after-hours-stop.php')) return false;
-    return true;
-  }
-  public function checkScriptsChanged() {
-    if (file_get_contents($this->directories['scriptDirectory'].'fpp-after-hours-start.php') != file_get_contents($this->directories['pluginDirectory'].'templates/fpp-after-hours-startTemplate.php')) return true;
-    if (file_get_contents($this->directories['scriptDirectory'].'fpp-after-hours-stop.php') != file_get_contents($this->directories['pluginDirectory'].'templates/fpp-after-hours-stopTemplate.php')) return true;
-    return false;
-  }
-  public function updateScripts() {
-    file_put_contents($this->directories['scriptDirectory'].'fpp-after-hours-start.php',file_get_contents($this->directories['pluginDirectory'].'templates/fpp-after-hours-startTemplate.php'));
-    file_put_contents($this->directories['scriptDirectory'].'fpp-after-hours-stop.php',file_get_contents($this->directories['pluginDirectory'].'templates/fpp-after-hours-stopTemplate.php'));
-    $this->checkMakeScriptsExecutable();
-  }
-  public function checkMakeScriptsExecutable() {
-    $fileList=array("fpp-after-hours-start.php","fpp-after-hours-stop.php");
-    foreach ($fileList as $f) {
-      if (!is_executable($this->directories['scriptDirectory'].$f)) {
-        exec("sudo chmod +x ".$this->directories['scriptDirectory'].$f);
-      }
-    }
-  }
-  
-  public function refreshScriptsOkayFlag() {
-    @$this->scriptsOkay=false;
-    if ($this->checkScriptsLoaded() == true)
-      if ($this->checkScriptsChanged() == false) {
-	      $this->checkMakeScriptsExecutable();
-        $this->scriptsOkay=true;
-      }
-  }
   
   
   public function getSystemSoundCards() {
@@ -423,6 +376,7 @@ class fppAfterHours {
   }
   
   public function checkForMPDFormat() {
+    if (!$this->mpdConfigIsManageable()) return false;
     $config = self::getMPDConfig();
     if ($this->isPipewireMode()) {
         // No pulse output block at all means mpd.conf was reset - full repair needed
@@ -458,6 +412,7 @@ class fppAfterHours {
     //   2. ownership of mpd's data directory
     //   3. the audio_output block itself
     // Re-apply all three together so a reset never leaves mpd half-broken.
+    if (!$this->mpdConfigIsManageable()) return false;
     exec("sudo sed -i -E 's/^[[:space:]]*(user[[:space:]])/#\\1/; s/^[[:space:]]*(group[[:space:]])/#\\1/' /etc/mpd.conf");
     exec("sudo chown -R fpp:fpp /var/lib/mpd");
     return $this->updateMPDConfig(true);
@@ -492,8 +447,9 @@ class fppAfterHours {
   // graph rather than any per-user session: ALSA hw devices are exclusive, so a
   // second WirePlumber opening the card blocks all FPP audio (#49).
   // MPD runs as fpp and cannot use FPP's own socket (/run/pipewire-fpp/pulse is
-  // reset to root-only 0700 by FPP's root pactl calls), so fpp_install.sh has
-  // FPP's pulse server also listen on this plugin-managed socket.
+  // reset to root-only 0700 by FPP's root pactl calls), so the plugin runs its
+  // own pulse server on FPP's graph (fpp-after-hours-pulse.service, installed
+  // by fpp_install.sh) listening only on this socket (#62).
   const FPP_PULSE_SOCKET = '/run/fpp-after-hours/pulse-native';
 
   // The sink fppd itself plays to in FPP 10 (combine-stream group "Default").
@@ -512,7 +468,30 @@ class fppAfterHours {
     return false;
   }
   
+  // Replace /etc/mpd.conf's contents in place (keeps the file's owner and
+  // mode, so it stays the package's conffile), straight from memory - no
+  // temporary copy. Runs as the web/fpp user, hence sudo.
+  private function writeMPDConfigFile($content) {
+    $proc = proc_open(array('sudo', 'tee', '/etc/mpd.conf'),
+                      array(0 => array('pipe', 'r'), 1 => array('file', '/dev/null', 'w'), 2 => array('pipe', 'w')),
+                      $pipes);
+    if (!is_resource($proc)) return false;
+    fwrite($pipes[0], $content);
+    fclose($pipes[0]);
+    $err = stream_get_contents($pipes[2]);
+    fclose($pipes[2]);
+    if (proc_close($proc) !== 0) {
+      error_log("fpp-after-hours... ERROR: could not write /etc/mpd.conf: ".trim($err));
+      return false;
+    }
+    return true;
+  }
+
   public function updateMPDConfig($forceUpdate=false) {
+    // Never create or stub out /etc/mpd.conf: it must stay the file the mpd
+    // package installed, only edited (#60). The pristine copy used on
+    // uninstall is taken by fpp_install.sh, not here.
+    if (!$this->mpdConfigIsManageable()) return false;
     if ($this->isPipewireMode()) {
         $pulseSocket = self::FPP_PULSE_SOCKET;
 
@@ -533,11 +512,7 @@ class fppAfterHours {
         $audio_output = "audio_output {\n\ttype\t\"pulse\"\n\tname\t\"FPP PipeWire Output\"\n\tserver\t\"$pulseSocket\"\n\tsink\t\"$sinkName\"\n\tmixer_type\t\"software\"\n\tformat\t\"44100:16:2\"\n}\n";
         $newConfig = $audio_output."\n\n".trim($mpdConfig->noOutputs)."\n";
 
-        if (file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig", $newConfig)) {
-            if (!file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf"))
-                exec("cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
-            exec("sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
-            unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
+        if ($this->writeMPDConfigFile($newConfig)) {
             exec("sudo systemctl restart mpd 2>/dev/null");
             $this->waitForMPDReady();
             return true;
@@ -563,11 +538,7 @@ class fppAfterHours {
                 $mpdConfig=$this->getMPDConfig();
                 if ($mpdConfig===false) return false;
                 $newConfig=$audio_output."\n\n".trim($mpdConfig->noOutputs)."\n";
-                if (file_put_contents($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig",$newConfig)) {
-                    if (!file_exists($this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf"))
-                        exec("sudo cp -rf /etc/mpd.conf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdOriginal.conf");
-                    exec("sudo cp -rf ".$this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig /etc/mpd.conf");
-                    unlink($this->directories['pluginDataDirectory']."fpp-after-hours-mpdConfig");
+                if ($this->writeMPDConfigFile($newConfig)) {
                     exec("sudo systemctl restart mpd 2>/dev/null");
                     $this->waitForMPDReady();
                     unset($mpdConfig);
@@ -593,16 +564,6 @@ class fppAfterHours {
     return false;
   }
 
-  public function checkGitUpdates() {
-    exec("cd /home/fpp/media/plugins/fpp-after-hours && sudo git fetch --all && sudo git checkout",$ret);
-    return $ret;
-  }
-  
-  public function pluginGitUpdate($hard=false) {
-    //exec("cd /home/fpp/media/plugins/fpp-after-hours".($hard===true ? " && sudo git reset --hard":"")." && sudo git fetch --all && sudo git pull origin",$ret);
-    exec(($hard===true ? "cd /home/fpp/media/plugins/fpp-after-hours && sudo git reset --hard && ":"")."/opt/fpp/scripts/update_plugin fpp-after-hours",$ret);
-    return $ret;
-  }
   
   public function pingInternetRadio($host) {
     $purl=parse_url($host);
