@@ -21,7 +21,7 @@
         ],
         "collects": [],
         "sensors": [],
-        "remoteAccess": "none",
+        "remoteAccess": "API connectivity allowed via FPP API handler",
         "systemChanges": [
             {
                 "kind": "service",
